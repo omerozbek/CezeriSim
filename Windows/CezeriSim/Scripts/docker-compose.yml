@@ -1,0 +1,57 @@
+
+# Single ArduPlane SITL drone for CezeriSim.
+# Build once:  docker compose build
+# Start:       python start_sitl_docker.py        (resolves active vehicle, then docker compose up)
+# Stop:        docker compose down
+#
+# MAVLink connection from Windows:
+#   tcp:localhost:5760     (mavproxy / pymavlink)
+# JSON physics port:
+#   udp 9002               (UE ArduPilotJSONBridge)
+#
+# Active vehicle params are mounted from vehicle.parm (written by start_sitl_docker.py).
+# Do not edit vehicle.parm directly — change Vehicles/active_vehicle.txt instead.
+
+services:
+  sitl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cezeri-sitl:latest
+    container_name: cezeri_sitl_drone0
+
+    # ArduPlane SITL binary arguments — model is selected by AP_MODEL env var.
+    # start_sitl_docker.py reads the active vehicle's `backend` field and exports:
+    #   backend=ap_native  → AP_MODEL=quadplane  AP_EXTRA=""           (built-in physics)
+    #   backend=ue_physics → AP_MODEL=JSON       AP_EXTRA=--sim-port-* (UE provides physics)
+    command: >
+      --model ${AP_MODEL:-quadplane}
+      --defaults /home/ardupilot/vehicle.parm
+      ${AP_EXTRA_ARGS:-}
+      --home=41.0082000,28.9784000,0.00,0
+      --serial0=tcp:5760
+      -I0
+
+    volumes:
+      # Active vehicle params — written by start_sitl_docker.py from Vehicles/<name>/params.parm
+      - ./vehicle.parm:/home/ardupilot/vehicle.parm:ro
+
+    ports:
+      # Servo relay: AP sends servo OUT to host.docker.internal:9006 (relay port).
+      # servo_relay.py on Windows receives on 9006, re-sends as 127.0.0.1→9002 (UE).
+      # Windows Firewall blocks Docker-NAT traffic to UE's port 9002; via 127.0.0.1 it works.
+      # 9003 maps host→container: UE sends JSON to localhost:9003 → Docker → container:9003 → AP.
+      # NOTE: do NOT publish 9006. AP sends servo-out to host:9006 where servo_relay.py
+      # listens. Publishing 9006:9006 makes Docker's proxy also bind host:9006 and grab
+      # AP's servo-out, looping it back into the container so the relay gets 0 packets
+      # (root cause of the flaky/"works sometimes" link). The publish was always unused.
+      - "9003:9003/udp"    # JSON from UE → ArduPilot
+      # - "9006:9006/udp"  # REMOVED — caused servo-out hijack; relay owns host:9006
+      - "5760:5760/tcp"    # MAVLink SERIAL0 — control scripts
+      - "5762:5762/tcp"    # MAVLink SERIAL1 — visualizer_bridge.py (keeps 5760 free for control)
+
+    # Needed on Linux Docker; Docker Desktop for Windows sets this automatically
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    restart: unless-stopped

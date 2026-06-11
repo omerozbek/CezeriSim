@@ -1,0 +1,273 @@
+# vtol.parm — ArduPlane QuadPlane SITL parameters for CezeriSim
+#
+# Pass with: --defaults /home/ardupilot/ardupilot/vtol.parm
+#
+# Source: gökçe21mayısparametreleri.param (real Orange Cube, 2026-05-21 flight)
+# SITL overrides are marked [SITL].  All other values are verbatim from the real vehicle.
+#
+# Critical invariants:
+#   SIM_RATE_HZ=1000  must match UArduPilotJSONBridge::SimRateHz in UE
+#   Servo remapping must match UVTOLPhysicsComponent pwm[] channel order
+#   kThrust in VTOLPhysicsComponent.h must be recalculated when Q_M_THST_HOVER changes
+
+# ---- QuadPlane enable -------------------------------------------------------
+Q_ENABLE        1
+Q_FRAME_CLASS   1       # Quad
+Q_FRAME_TYPE    1       # X configuration
+
+# ---- Simulation rate [SITL] (must match UE SimRateHz) -----------------------
+SIM_RATE_HZ     1000
+
+# ---- Arming [SITL] ----------------------------------------------------------
+ARMING_CHECK    0
+
+# ---- Airspeed sensor [SITL] -------------------------------------------------
+# Sensor disabled (SITL has no pitot tube); real vehicle uses ARSPD_TYPE=1, ARSPD_USE=1.
+# Performance envelope limits below are real and apply regardless of sensor presence.
+ARSPD_TYPE      0           # [SITL] real=1 (MS4525)
+ARSPD_USE       0           # [SITL] real=1
+ARSPD_RATIO     2           # real vehicle value
+ARSPD_OPTIONS   11          # real vehicle value
+AIRSPEED_CRUISE 18          # m/s cruise target (real vehicle)
+AIRSPEED_MIN    17          # m/s min airspeed (real vehicle)
+AIRSPEED_MAX    25          # m/s max airspeed (real vehicle)
+AIRSPEED_STALL  16.5        # m/s stall speed (real vehicle)
+
+# ---- SITL floating point exceptions [SITL] ----------------------------------
+SIM_FLOAT_EXCEPT 0
+
+# ---- EKF IMU lane selection [SITL] ------------------------------------------
+EK3_IMU_MASK    1
+
+# ---- Compass/Magnetometer [SITL] -------------------------------------------
+# Disabled: in-flight MAG yaw alignment causes large EKF position jump (~9 m).
+# EKF yaw from GPS velocity heading instead.
+COMPASS_ENABLE  0
+
+# ---- EKF3 noise parameters (real vehicle) -----------------------------------
+EK3_GYRO_P_NSE  0.015
+EK3_ACC_P_NSE   0.35
+EK3_GPS_P_NSE   0.1         # tightened from real 0.5 so GPS dominates IMU drift
+EK3_POSNE_M_NSE 0.5
+EK3_VELNE_M_NSE 0.5
+EK3_VELD_M_NSE  0.7
+EK3_ALT_M_NSE   3.0
+EK3_MAG_M_NSE   0.05
+EK3_EAS_M_NSE   1.4
+EK3_ABIAS_P_NSE 0.02
+EK3_GBIAS_P_NSE 0.001
+EK3_WIND_P_NSE  0.1
+
+# ---- GPS home [SITL] --------------------------------------------------------
+# Must match --home on docker-compose command line and UE HomeLat/HomeLon/HomeAlt.
+SIM_OPOS_LAT    41.0082000
+SIM_OPOS_LNG    28.9784000
+SIM_OPOS_ALT    0.0
+SIM_OPOS_HDG    0
+
+# ---- Servo channel remapping ------------------------------------------------
+# UVTOLPhysicsComponent reads:  pwm[0..3]=motors, pwm[4]=ail-L, pwm[5]=ail-R,
+#                                pwm[6]=elevator, pwm[7]=rudder, pwm[8]=pusher.
+SERVO1_FUNCTION  33     # Q_Motor1 (Front-Right, CCW) → pwm[0]
+SERVO2_FUNCTION  34     # Q_Motor2 (Rear-Left,   CCW) → pwm[1]
+SERVO3_FUNCTION  35     # Q_Motor3 (Front-Left,  CW)  → pwm[2]
+SERVO4_FUNCTION  36     # Q_Motor4 (Rear-Right,  CW)  → pwm[3]
+SERVO5_FUNCTION   4     # Aileron L                   → pwm[4]
+SERVO5_REVERSED   1     # [SITL/UE-plant] AP func-4 high = roll right; UE needs (R-L)/2 > 0 (BUGFIXES 2026-06-10 PM3). Real vehicle: set reversals from bench surface check, NOT from here.
+SERVO6_FUNCTION   4     # Aileron R                   → pwm[5]
+SERVO6_REVERSED   0     # [SITL/UE-plant] was 1 — mirror moved to SERVO5
+SERVO7_FUNCTION  19     # Elevator                    → pwm[6]
+SERVO7_REVERSED   1     # [SITL/UE-plant] AP func-19 high = nose UP; UE CmElevator<0 needs the flip (BUGFIXES 2026-06-10 PM3)
+SERVO8_FUNCTION  21     # Rudder                      → pwm[7]
+SERVO9_FUNCTION  70     # Pusher throttle             → pwm[8]
+
+# ---- Fixed-wing throttle / speed limits (real vehicle) ----------------------
+THR_MIN         0
+THR_MAX         100
+TRIM_THROTTLE   45          # 45% throttle for level cruise
+SCALING_SPEED   15          # airspeed at which PID gains are nominal (m/s)
+ROLL_LIMIT_DEG  45
+PTCH_LIM_MAX_DEG    20
+PTCH_LIM_MIN_DEG   -25
+STALL_PREVENTION    1
+KFF_RDDRMIX     0.5
+RUDD_DT_GAIN    10
+
+# ---- Fixed-wing rate controllers (real vehicle) -----------------------------
+RLL_RATE_P      0.08
+RLL_RATE_I      0.15
+RLL_RATE_D      0
+RLL_RATE_FF     0.345
+RLL_RATE_IMAX   0.666
+RLL_RATE_FLTD   12
+RLL_RATE_FLTT   3
+RLL2SRV_TCONST  0.5
+
+PTCH_RATE_P     0.04
+PTCH_RATE_I     0.15
+PTCH_RATE_D     0
+PTCH_RATE_FF    0.345
+PTCH_RATE_IMAX  0.666
+PTCH_RATE_FLTD  12
+PTCH_RATE_FLTT  3
+PTCH2SRV_TCONST 0.5
+PTCH2SRV_RMAX_DN    0
+PTCH2SRV_RMAX_UP    0
+
+# ---- TECS (fixed-wing energy controller, real vehicle) ----------------------
+TECS_TIME_CONST 5
+TECS_THR_DAMP   0.5
+TECS_INTEG_GAIN 0.3
+TECS_PTCH_DAMP  0.3
+TECS_VERT_ACC   7
+TECS_HGT_OMEGA  3
+TECS_SPD_OMEGA  2
+TECS_SPDWEIGHT  1
+TECS_CLMB_MAX   5       # m/s max climb rate
+TECS_SINK_MIN   2       # m/s min sink rate
+TECS_SINK_MAX   5       # m/s max sink rate
+TECS_PITCH_MAX  15
+TECS_PITCH_MIN  0
+TECS_RLL2THR    10
+TECS_HDEM_TCONST    3
+TECS_LAND_ARSPD -1
+TECS_LAND_DAMP  0.5
+TECS_LAND_SINK  0.25
+TECS_LAND_SPDWGT    -1
+TECS_LAND_TCONST    2
+TECS_LAND_PMAX  10
+TECS_LAND_IGAIN 0
+TECS_LAND_PDAMP 0
+TECS_APPR_SMAX  0
+
+# ---- Navigation (real vehicle) ----------------------------------------------
+NAVL1_PERIOD    20
+NAVL1_DAMPING   0.75
+NAVL1_XTRACK_I  0.02
+WP_LOITER_RAD   70
+LAND_FLARE_ALT  3
+LAND_FLARE_SEC  2
+LAND_WIND_COMP  50
+
+# ---- QuadPlane transition (real vehicle) ------------------------------------
+Q_TRANSITION_MS 10000   # 10 s VTOL→fixed-wing transition
+Q_ASSIST_SPEED  13      # quad assists fixed-wing below 13 m/s
+Q_BACKTRANS_MS  3000
+Q_BCK_PIT_LIM   10
+Q_TRAN_PIT_MAX  3
+Q_TRANS_DECEL   2
+Q_FWD_PIT_LIM   3
+Q_FWD_THR_GAIN  2
+Q_FWD_THR_USE   0
+
+# ---- QuadPlane motor limits (real vehicle) ----------------------------------
+Q_M_PWM_MIN     1000    # real vehicle (full PWM range)
+Q_M_PWM_MAX     2000    # real vehicle (full PWM range)
+Q_M_SPIN_ARM    0       # real vehicle
+Q_M_SPIN_MIN    0.15
+Q_M_SPIN_MAX    0.95
+Q_M_SPOOL_TIME  0.25
+Q_M_THST_EXPO   0.65    # motor thrust curve nonlinearity
+Q_M_HOVER_LEARN 0       # [SITL] real=2, disabled so sim doesn't overwrite calibrated value
+# Real hover point: Q_M_THST_HOVER=0.35 → hover PWM=1000+0.35*1000=1350µs
+# Physics throttle u=(1350-1000)/1000=0.35 → kThrust=(10*9.81/4)/0.35²=200.2 N
+Q_M_THST_HOVER  0.35    # real vehicle (T-Motor P60 + Falcon CF 22×6.6", 10 kg MTOW)
+Q_RC_SPEED      490
+
+# ---- QuadPlane angle / rate limits (real vehicle) ---------------------------
+Q_ANGLE_MAX     3000    # 30 deg max tilt (centidegrees)
+Q_A_ANG_LIM_TC  1.0
+Q_A_INPUT_TC    0.2
+Q_A_ACCEL_R_MAX 40000
+Q_A_ACCEL_P_MAX 40000
+Q_A_ACCEL_Y_MAX 10000
+Q_A_RATE_R_MAX  0       # 2026-06-10 PM4: unlimited — 75 deg/s cap clipped angle-loop demands and sustained a ±40° descent limit cycle on sitl_ue (see INVARIANTS)
+Q_A_RATE_P_MAX  0       # 2026-06-10 PM4: see R_MAX note
+Q_A_RATE_Y_MAX  75
+Q_A_SLEW_YAW    6000
+
+# ---- QuadPlane attitude PID gains -------------------------------------------
+# Real Orange Cube flight parameters (verbatim from gökçe21mayısparametreleri.param).
+# Physics kThrust=200.2 N calibrated for 10 kg MTOW: kT=(10*9.81/4)/0.35²=200.2 N.
+Q_A_ANG_RLL_P   4.5
+Q_A_ANG_PIT_P   4.5
+Q_A_ANG_YAW_P   4.5
+Q_A_RAT_RLL_P   0.25    # real vehicle (gökçe21may)
+Q_A_RAT_PIT_P   0.25    # real vehicle (gökçe21may)
+Q_A_RAT_YAW_P   0.18
+Q_A_RAT_RLL_I   0.25
+Q_A_RAT_PIT_I   0.25
+Q_A_RAT_YAW_I   0.018
+Q_A_RAT_RLL_D   0.0036
+Q_A_RAT_PIT_D   0.0036
+Q_A_RAT_YAW_D   0
+Q_A_RAT_RLL_IMAX    0.5
+Q_A_RAT_PIT_IMAX    0.5
+Q_A_RAT_YAW_IMAX    0.5
+Q_A_RAT_RLL_FLTD    10
+Q_A_RAT_PIT_FLTD    10
+Q_A_RAT_YAW_FLTD    20
+Q_A_RAT_RLL_FLTT    20
+Q_A_RAT_PIT_FLTT    20
+Q_A_RAT_YAW_FLTT    20
+Q_A_THR_MIX_MAN 0.1
+Q_A_THR_MIX_MAX 0.5
+Q_A_THR_MIX_MIN 0.1
+Q_A_ANGLE_BOOST 1
+Q_A_THR_G_BOOST 0
+Q_THROTTLE_EXPO 0.2
+
+# ---- QuadPlane position controller (real vehicle) ---------------------------
+Q_P_POSXY_P     0.5
+Q_P_POSZ_P      1.0
+Q_P_VELXY_P     0.7
+Q_P_VELXY_I     0.35
+Q_P_VELXY_D     0.17
+Q_P_VELXY_IMAX  1000
+Q_P_VELZ_P      5.0
+Q_P_VELZ_IMAX   1000
+Q_P_ACCZ_P      0.3
+Q_P_ACCZ_I      1.0
+Q_P_ACCZ_IMAX   800
+Q_P_JERK_XY     2
+Q_P_JERK_Z      5
+
+# ---- QuadPlane pilot speed limits (real vehicle) ----------------------------
+Q_PILOT_SPD_UP  2.5     # m/s max climb
+Q_PILOT_SPD_DN  1.5     # m/s max descent
+Q_PILOT_ACCEL_Z 2.5
+Q_LOIT_SPEED    500     # cm/s loiter speed
+Q_LOIT_ACC_MAX  250
+Q_LOIT_ANG_MAX  15
+Q_WP_SPEED      500     # cm/s
+Q_WP_SPEED_UP   125
+Q_WP_SPEED_DN   125
+Q_WP_ACCEL      100
+Q_WP_ACCEL_Z    100
+Q_WP_RADIUS     500
+Q_PLT_Y_EXPO    0.25
+Q_PLT_Y_RATE    100
+Q_PLT_Y_RATE_TC 0.25
+Q_LOIT_BRK_ACCEL    50
+Q_LOIT_BRK_DELAY    1
+Q_LOIT_BRK_JERK 250
+Q_GUIDED_MODE   1
+
+# ---- Wind vane (real vehicle) -----------------------------------------------
+Q_WVANE_ENABLE  1
+Q_WVANE_GAIN    0
+Q_WVANE_ANG_MIN 1
+
+# ---- RTL (real vehicle) -----------------------------------------------------
+Q_RTL_ALT       15
+Q_RTL_ALT_MIN   10
+Q_RTL_MODE      1
+Q_NAVALT_MIN    5
+
+# ---- 2026-06-10 lockstep/EKF-stream fix (see BUGFIXES 2026-06-10) ------------
+# Same two settings as sitl_ue: SIM_SPEEDUP 5 stops AP's wall-clock pacing so
+# the JSON socket queue never backs up and drops frames (the root cause of the
+# ±2-5 m EKF hover wallow); BARO_FIELD_ELV 10 stops the 1 Hz baro-datum resets
+# caused by home altitude being exactly 0.
+SIM_SPEEDUP     5
+BARO_FIELD_ELV  10

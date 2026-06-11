@@ -1,0 +1,33 @@
+{
+    "_doc": {
+        "pwm_min":               "Minimum PWM signal sent to motors in microseconds. Must match Q_M_PWM_MIN in params.parm. Typically 1000 µs (zero throttle).",
+        "pwm_max":               "Maximum PWM signal sent to motors in microseconds. Must match Q_M_PWM_MAX in params.parm. Typically 2000 µs (full throttle).",
+
+        "k_thrust":              "Lift motor thrust coefficient in Newtons. Each motor produces: T = k_thrust * throttle^2, where throttle = (PWM - pwm_min) / (pwm_max - pwm_min). Formula: k_thrust = (mass_kg * 9.81 / 4) / hover_throttle^2, where hover_throttle = Q_M_THST_HOVER from params.parm. Example: 10 kg, Q_M_THST_HOVER=0.35 → k_thrust = 24.525 / 0.1225 = 200.2 N.",
+        "k_torque":              "Lift motor reaction torque coefficient. Each motor also produces a spin torque: Q = k_torque * throttle^2. CW and CCW motors cancel in pairs, the net yaw torque comes from the imbalance. Typical ratio k_torque/k_thrust ≈ 0.01–0.05 m (effective moment arm of drag). Default 0.6 is an approximation — tune if yaw authority feels wrong.",
+        "k_thrust_pusher":       "Pusher (or puller) motor thrust coefficient in Newtons: T = k_thrust_pusher * throttle^2. Acts along body +X (forward). Leave at 0 if you have no fixed-wing motor.",
+
+        "motor_time_constant_s": "First-order lag time constant for motor thrust response, in seconds. Real brushless motors take 30–50 ms to spin up or down. Without this lag the simulator reacts to ArduPilot integrator steps as instant impulses, causing flip at liftoff. Typical value: 0.03–0.08 s.",
+        "rotational_damping":    "Rotational damping coefficient in N·m/(rad/s), applied equally to all three axes. Represents the combined effect of rotor-disk drag asymmetry and body aero drag that damps angular rate. Real multirotors have significant natural damping that the ArduPilot PIDs rely on — without this the hover PIDs go unstable. Tune: increase if the vehicle oscillates, decrease if response feels sluggish.",
+        "drag_coeff":            "Hover heave drag coefficient in N/(m/s), applied on BODY Z only. Stands in for rotor-inflow damping while the lift rotors carry the vehicle (it acts along the rotor axis — never on body X/Y, or it caps forward flight). Faded out between hover_drag_fade_lo_ms and hover_drag_fade_hi_ms. Small airframes: 0.1–0.5; stability-first reference vehicles may use much larger values (sitl_ue uses 15).",
+        "drag_coeff_hover_xy":   "Hover translational damping on body X/Y in N/(m/s). Mild position-hold aid; keep small enough that the pusher can accelerate through it during transition. Faded out with the same band as drag_coeff. Typical value: 0.5–2.",
+        "drag_coeff_forward":    "Residual always-on isotropic linear parasite drag (fuselage/arms) in N/(m/s), applied at all speeds on top of the faded hover drag. Typical value: 0.1–0.5.",
+        "hover_drag_fade_lo_ms": "Airspeed (m/s) below which the full hover drag_coeff applies. Default 6.",
+        "hover_drag_fade_hi_ms": "Airspeed (m/s) above which only drag_coeff_forward remains. Default 12. Must be above hover_drag_fade_lo_ms; the wing's own heave damping should be active in this band (see min_airspeed_ms)."
+    },
+
+    "pwm_min":             1000,
+    "pwm_max":             2000,
+
+    "k_thrust":            0.0,
+    "k_torque":            0.0,
+    "k_thrust_pusher":     0.0,
+
+    "motor_time_constant_s": 0.05,
+    "rotational_damping":   1.5,
+    "drag_coeff":           0.20,
+    "drag_coeff_hover_xy":  0.50,
+    "drag_coeff_forward":   0.20,
+    "hover_drag_fade_lo_ms": 6.0,
+    "hover_drag_fade_hi_ms": 12.0
+}

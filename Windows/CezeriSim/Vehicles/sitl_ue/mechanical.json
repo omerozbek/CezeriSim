@@ -1,0 +1,42 @@
+{
+    "_about": "3 kg generic QuadPlane — ue_physics backend. Same plant as sitl_default (mass, inertia, aero) but UE provides physics via JSON bridge instead of ArduPilot's built-in model. Use this for validating the UE physics path before moving to real vehicles (gokce).",
+
+    "backend": "ue_physics",
+    "_backend_doc": "ue_physics = ArduPilot runs --model JSON; UE UVTOLPhysicsComponent integrates all forces and sends state back each tick. Motors on SERVO1-4 in params.parm.",
+
+    "mass_kg":             3.0,
+    "inertia_roll_kg_m2":  1.4,
+    "inertia_pitch_kg_m2": 1.4,
+    "inertia_yaw_kg_m2":   2.5,
+
+    "arm_length_m":        0.30,
+
+    "wing_area_m2":        0.45,
+    "aspect_ratio":        7.85,
+    "oswald_e":            0.9,
+    "mac_m":               0.24,
+
+    "cl0":                 0.56,
+    "cl_alpha":            6.9,
+    "cd0":                 0.10,
+    "cy_beta":            -0.3,
+
+    "cm_aileron":          0.20,
+    "cm_elevator":        -0.50,
+    "cm_rudder":           0.08,
+
+    "cm_alpha":           -1.0,
+    "cm_q":              -12.0,
+    "cl_p":               -0.5,
+    "cn_r":               -0.15,
+    "cn_beta":             0.08,
+    "_stability_doc": "Stability derivatives, added 2026-06-10 PM2 after the first fixed-wing leg diverged in pitch (±4° growing to a -85° dive in 16 s): with moments only from control surfaces the airframe was aerodynamically neutral and AP's plane PIDs pumped it. cm_alpha -1.0 with cl_alpha 6.9 ≈ 15% static margin; short-period at 15 m/s: wn=3.3 rad/s, zeta≈0.5 (incl. rotational_damping 3.0). Trim elevator at 25 m/s cruise: 6.4° of 20°.",
+
+    "stall_aoa_deg":       27.0,
+    "min_airspeed_ms":      8.0,
+    "_min_airspeed_doc": "Aero fade-in threshold: zero below 4 m/s, full wing forces at 8 m/s. Was 15.0 — broken: AIRSPEED_MIN is 13, so AP could command wing-borne flight at speeds where UE produced zero wing forces. 8.0 matches gokce/sitl_default and the FixedWingAeroComponent default.",
+    "max_control_deflection_deg": 20.0,
+
+    "gravity_ms2":         9.81,
+    "air_density":         1.225
+}

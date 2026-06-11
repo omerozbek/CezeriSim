@@ -1,0 +1,71 @@
+{
+    "_doc": {
+        "mass_kg":                    "Total vehicle mass in kg — with full batteries, no payload. Used for F=ma and hover thrust calibration.",
+        "inertia_roll_kg_m2":         "Moment of inertia around the roll axis (X, wing-to-wing), in kg·m². Larger = slower roll response. Estimated from motor arm length and wing mass distribution.",
+        "inertia_pitch_kg_m2":        "Moment of inertia around the pitch axis (Y, nose-to-tail), in kg·m². Larger = slower pitch response.",
+        "inertia_yaw_kg_m2":          "Moment of inertia around the yaw axis (Z, vertical), in kg·m². Usually the largest of the three for a VTOL with wide wingspan.",
+
+        "arm_length_m":               "Distance from the vehicle centre to each lift motor, in metres. For a quad: half the motor-to-motor diagonal. Affects roll/pitch torque authority: bigger arm = more torque per unit thrust difference.",
+
+        "wing_area_m2":               "Total wing reference area in m². Used in all aerodynamic force calculations: L = 0.5 * rho * V^2 * S * CL.",
+        "aspect_ratio":               "Wing aspect ratio: span^2 / wing_area. Higher AR = more efficient wing (less induced drag). Typical values: 5–10 for UAVs.",
+        "oswald_e":                   "Oswald efficiency factor (0–1). Accounts for non-ideal lift distribution across the span. 0.8 is typical for a clean UAV wing.",
+        "mac_m":                      "Mean Aerodynamic Chord in metres — effective average chord length used in pitch moment calculations. For a tapered wing: MAC = (2/3) * root_chord * (1 + taper + taper^2) / (1 + taper).",
+
+        "cl0":                        "Lift coefficient at zero angle of attack. Positive for cambered airfoils (produces lift even at 0° AoA). Symmetric airfoils have CL0 = 0.",
+        "cl_alpha":                   "Lift curve slope in 1/radian (dCL/dAlpha). Finite-wing value ≈ 2*pi / (1 + 2/AR). Typical range: 4–6 /rad for UAV wings.",
+        "cd0":                        "Zero-lift (parasite) drag coefficient. Includes fuselage, landing gear, motor nacelles. Typical small UAV: 0.02–0.05.",
+        "cy_beta":                    "Side-force derivative dCY/dBeta in 1/radian. Negative for a stable aircraft (sideslip creates restoring side force). Typical: -0.2 to -0.5.",
+
+        "cm_aileron":                 "Roll moment coefficient per radian of aileron deflection (dCl/dDelta_a). Positive = right aileron down → right roll. Typical: 0.1–0.4.",
+        "cm_elevator":                "Pitch moment coefficient per radian of elevator deflection (dCm/dDelta_e). Negative = trailing-edge-down elevator → nose-up moment. Typical: -0.5 to -1.5.",
+        "cm_rudder":                  "Yaw moment coefficient per radian of rudder deflection (dCn/dDelta_r). Positive = trailing-edge-right rudder → nose-right yaw. Typical: 0.05–0.2.",
+
+        "cm_alpha":                   "Static pitch stiffness dCm/dAlpha in 1/radian. MUST be negative for a flyable airframe (statically stable, AC behind CG) — without it the plane is aerodynamically neutral and the autopilot pitch loop diverges. Typical: -0.5 to -2.0 (≈ -cl_alpha × static margin).",
+        "cm_q":                       "Pitch rate damping dCm/dq̂ per radian, q̂ = q·MAC/(2V). Negative. Typical: -8 to -25.",
+        "cl_p":                       "Roll rate damping dCl/dp̂ per radian, p̂ = p·b/(2V). Negative. Typical: -0.4 to -0.6.",
+        "cn_r":                       "Yaw rate damping dCn/dr̂ per radian, r̂ = r·b/(2V). Negative. Typical: -0.1 to -0.2.",
+        "cn_beta":                    "Weathervane stability dCn/dBeta in 1/radian. Positive = nose turns into the relative wind. Typical: 0.05–0.15.",
+
+        "stall_aoa_deg":              "Angle of attack at which the wing stalls (loses lift rapidly), in degrees. Above this, CL is clamped to prevent runaway. Typical: 10–16° for UAV airfoils.",
+        "min_airspeed_ms":            "Airspeed below which all aerodynamic forces are suppressed (m/s). During VTOL hover the airspeed is near zero and aero forces would be noise — suppress them until the vehicle is flying fast enough for aero to matter.",
+        "max_control_deflection_deg": "Maximum control surface deflection angle in degrees (applies to aileron, elevator, rudder). PWM 1000/2000 maps to ±this angle.",
+
+        "gravity_ms2":                "Gravitational acceleration in m/s². 9.81 at sea level. Rarely needs changing.",
+        "air_density":                "Air density in kg/m³. 1.225 at sea level, 15°C. Reduce for high-altitude operation (e.g. 1.112 at 1000 m, 1.007 at 2000 m)."
+    },
+
+    "mass_kg":             0.0,
+    "inertia_roll_kg_m2":  0.0,
+    "inertia_pitch_kg_m2": 0.0,
+    "inertia_yaw_kg_m2":   0.0,
+
+    "arm_length_m":        0.0,
+
+    "wing_area_m2":        0.0,
+    "aspect_ratio":        0.0,
+    "oswald_e":            0.8,
+    "mac_m":               0.0,
+
+    "cl0":                 0.0,
+    "cl_alpha":            0.0,
+    "cd0":                 0.0,
+    "cy_beta":             0.0,
+
+    "cm_aileron":          0.0,
+    "cm_elevator":         0.0,
+    "cm_rudder":           0.0,
+
+    "cm_alpha":           -1.0,
+    "cm_q":              -12.0,
+    "cl_p":               -0.5,
+    "cn_r":               -0.15,
+    "cn_beta":             0.08,
+
+    "stall_aoa_deg":       0.0,
+    "min_airspeed_ms":     8.0,
+    "max_control_deflection_deg": 20.0,
+
+    "gravity_ms2":         9.81,
+    "air_density":         1.225
+}
