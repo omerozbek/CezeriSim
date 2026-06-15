@@ -43,8 +43,7 @@ RUN python3 /home/ardupilot/apply_patches.py
 # Build ArduPlane SITL binary with patches applied
 RUN ./waf plane
 
-# Copy param file and entrypoint
-COPY --chown=ardupilot:ardupilot vtol.parm /home/ardupilot/ardupilot/vtol.parm
+# Copy entrypoint (runtime params come from the mounted vehicle.parm, see docker-compose.yml)
 COPY --chown=ardupilot:ardupilot entrypoint.sh /home/ardupilot/entrypoint.sh
 RUN chmod +x /home/ardupilot/entrypoint.sh
 
