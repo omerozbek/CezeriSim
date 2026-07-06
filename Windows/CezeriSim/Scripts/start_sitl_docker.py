@@ -22,7 +22,6 @@ Usage:
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -160,7 +159,11 @@ def resolve_vehicle(override: str | None) -> Path:
 
 def prepare_vehicle_parm(vehicle_dir: Path) -> None:
     src = vehicle_dir / "params.parm"
-    shutil.copy2(src, VEHICLE_PARM)
+    # vehicle.parm is volume-mounted into the Linux container; write it with LF
+    # endings so a CRLF checkout (git core.autocrlf=true) can't leak \r into
+    # ArduPilot's parameter parser.
+    text = src.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    VEHICLE_PARM.write_text(text, encoding="utf-8", newline="\n")
     print(f"[OK] Vehicle: {vehicle_dir.name}")
     print(f"     Params:  {src} -> {VEHICLE_PARM}")
 

@@ -16,14 +16,60 @@ Windows/
     ├── Scripts/                   # SITL Docker setup + flight/control scripts
     │   ├── Dockerfile             # Builds the ArduPlane SITL image
     │   ├── docker-compose.yml     # Runs the SITL container
-    │   └──start_sitl_docker.py   # Starts/stops SITL (resolves active vehicle)
+    │   ├── start_sitl_docker.py   # Starts/stops SITL (resolves active vehicle)
+    │   └── control/
+    │       └── servo_relay.py     # Relays AP servo output to UE (ue_physics mode)
     └── Vehicles/                  # Vehicle configs (params, mechanical/electrical)
         └── active_vehicle.txt     # Selects which vehicle config is used
 ```
 
+## Getting the repository
+
+The packaged simulator binaries (`CezeriSim.exe`, `.pak`/`.ucas` content) are
+stored in **Git LFS**. You must clone with Git LFS installed — do **not** use
+GitHub's "Download ZIP" button, it gives you tiny LFS pointer files instead of
+the real binaries and the simulator will not launch.
+
+1. Install [Git for Windows](https://git-scm.com/download/win) (Git LFS is
+   included by default; keep the default "Checkout Windows-style" option — the
+   repo forces correct line endings itself).
+2. Clone:
+
+   ```powershell
+   git lfs install
+   git clone https://github.com/omerozbek/CezeriSim.git
+   cd CezeriSim
+   ```
+
+3. Verify LFS content downloaded (should print ~290 MB, not a few hundred bytes):
+
+   ```powershell
+   git lfs ls-files --size
+   ```
+
+   If files show as pointers, run `git lfs pull`.
+
 ## Prerequisites
 
-### 1. Docker Desktop
+### 1. Python 3.10+
+
+`start_sitl_docker.py` (and the servo relay it launches) run on Windows with
+plain Python — no extra pip packages required.
+
+1. Install Python 3.10 or newer from <https://www.python.org/downloads/>
+   (check **"Add python.exe to PATH"** in the installer), or:
+
+   ```powershell
+   winget install Python.Python.3.12
+   ```
+
+2. Verify from a **new** terminal:
+
+   ```powershell
+   python --version
+   ```
+
+### 2. Docker Desktop
 
 The ArduPilot SITL flight controller runs in a Linux container, so you need
 Docker Desktop for Windows:
@@ -64,6 +110,11 @@ docker compose build
    Useful flags: `--vehicle <name>` (override active vehicle), `--build`
    (rebuild image first), `--stop`, `--logs`, `--list`.
 
+   For vehicles with the `ue_physics` backend this also starts
+   `Scripts/control/servo_relay.py` in the background, which forwards
+   ArduPilot's servo output (UDP 9006) to the simulator (UDP 127.0.0.1:9002).
+   Leave it running — without it the aircraft will not respond.
+
 2. Launch the simulator: run `Windows\CezeriSim.exe`.
 
 3. Connect a ground station or script over MAVLink:
@@ -93,3 +144,25 @@ declares its physics `backend`:
 To create a new vehicle, copy `Vehicles/_template/` and edit the files.
 Do **not** edit `Scripts/vehicle.parm` directly — it is generated from the
 active vehicle's `params.parm` by `start_sitl_docker.py`.
+
+## Troubleshooting
+
+**`exec /home/ardupilot/entrypoint.sh: no such file or directory`** when the
+container starts: the shell scripts were checked out with Windows (CRLF) line
+endings and baked into a stale image. Update to the latest commit, then force
+a clean rebuild:
+
+```powershell
+cd Windows\CezeriSim\Scripts
+docker compose build --no-cache
+```
+
+**Simulator launches but the aircraft never moves / never arms** (ue_physics
+vehicles): the servo relay is not running. Make sure you started SITL via
+`start_sitl_docker.py` (not `docker compose up` directly) and that
+`Scripts/control/servo_relay.py` exists — the launcher prints a
+`Servo relay : pid ...` line when it is active.
+
+**`CezeriSim.exe` is only a few hundred bytes / won't start**: the clone was
+made without Git LFS (or via "Download ZIP"). Install Git LFS and run
+`git lfs pull` inside the repo.

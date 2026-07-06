@@ -1,3 +1,15 @@
+# Force LF endings on files that are copied into or mounted in the Linux SITL
+# container. With Git for Windows' default core.autocrlf=true these would be
+# checked out as CRLF, and the container then fails at startup with:
+#   exec /home/ardupilot/entrypoint.sh: no such file or directory
+*.sh       text eol=lf
+*.py       text eol=lf
+*.parm     text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+Dockerfile text eol=lf
+
+# Large packaged binaries stored in Git LFS
 *.ucas filter=lfs diff=lfs merge=lfs -text
 *.exe filter=lfs diff=lfs merge=lfs -text
 *.pak filter=lfs diff=lfs merge=lfs -text

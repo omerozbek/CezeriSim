@@ -37,15 +37,20 @@ RUN Tools/environment_install/install-prereqs-ubuntu.sh -y
 RUN ./waf configure --board sitl
 
 # Apply source patches before compiling (fixes Docker UDP one-way NAT and SITL panics)
+# sed strips CR in case the file was checked out with CRLF endings on Windows
 COPY --chown=ardupilot:ardupilot patches/apply_patches.py /home/ardupilot/apply_patches.py
-RUN python3 /home/ardupilot/apply_patches.py
+RUN sed -i 's/\r$//' /home/ardupilot/apply_patches.py && \
+    python3 /home/ardupilot/apply_patches.py
 
 # Build ArduPlane SITL binary with patches applied
 RUN ./waf plane
 
 # Copy entrypoint (runtime params come from the mounted vehicle.parm, see docker-compose.yml)
+# sed strips CR in case the file was checked out with CRLF endings on Windows —
+# a CRLF shebang makes the container die with "exec entrypoint.sh: no such file or directory"
 COPY --chown=ardupilot:ardupilot entrypoint.sh /home/ardupilot/entrypoint.sh
-RUN chmod +x /home/ardupilot/entrypoint.sh
+RUN sed -i 's/\r$//' /home/ardupilot/entrypoint.sh && \
+    chmod +x /home/ardupilot/entrypoint.sh
 
 # SITL writes runtime files (eeprom.bin, logs) here
 RUN mkdir -p /home/ardupilot/sitl
