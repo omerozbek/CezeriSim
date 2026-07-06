@@ -1,0 +1,6 @@
+{
+    "display_name": "Drone Default",
+    "type": "drone",
+    "protected": true,
+    "_doc": "Protected factory default \u2014 the Models menu refuses to edit or delete it. Duplicate it to make an editable model."
+}

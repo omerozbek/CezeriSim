@@ -1,0 +1,33 @@
+{
+    "_about": "PROTECTED default drone model — snapshot of sitl_copter (generic 1.5 kg quadrotor, ue_physics backend, ArduCopter SITL). The Models menu refuses to edit or delete it; duplicate it to make an editable model. Plant: UDronePhysicsComponent (no fixed-wing fields).",
+
+    "backend": "ue_physics",
+
+    "_doc": {
+        "mass_kg":            "Total vehicle mass in kg — with full battery, no payload.",
+        "inertia_roll_kg_m2": "Moment of inertia around the roll axis (X), kg·m².",
+        "inertia_pitch_kg_m2":"Moment of inertia around the pitch axis (Y), kg·m².",
+        "inertia_yaw_kg_m2":  "Moment of inertia around the yaw axis (Z), kg·m². Usually the largest.",
+        "arm_length_m":       "Distance from centre to each motor, metres (half the motor-to-motor diagonal).",
+        "collision_radius_m": "Bounding-sphere radius for inter-vehicle collision, metres.",
+        "cg_offset_x_m":      "CG offset from geometric centre along body X (forward positive), metres. STORED for the future CG model — not yet consumed.",
+        "cg_offset_y_m":      "CG offset along body Y (right positive), metres. Stored.",
+        "cg_offset_z_m":      "CG offset along body Z (down positive), metres. Stored.",
+        "gravity_ms2":        "Gravitational acceleration in m/s².",
+        "air_density":        "Air density in kg/m³. Stored for the drone plant (linear drag model today)."
+    },
+
+    "mass_kg":             1.5,
+    "inertia_roll_kg_m2":  0.025,
+    "inertia_pitch_kg_m2": 0.025,
+    "inertia_yaw_kg_m2":   0.045,
+
+    "arm_length_m":        0.23,
+    "collision_radius_m":  0.35,
+    "cg_offset_x_m":       0.0,
+    "cg_offset_y_m":       0.0,
+    "cg_offset_z_m":       0.0,
+
+    "gravity_ms2":         9.81,
+    "air_density":         1.225
+}

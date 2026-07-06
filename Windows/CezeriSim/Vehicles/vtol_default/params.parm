@@ -1,3 +1,15 @@
+# vtol_default -- PROTECTED default VTOL model (managed by the MODELS menu).
+# Cannot be edited or deleted from the UI; duplicate it to make an editable model.
+# Data snapshot of gokce_flight16 (the active VTOL when the Models system was added).
+#
+# gokce_flight16 — faithful replay config of the REAL flight in
+# C:/Users/Omer/Desktop/Log/00000016.BIN (21-may configuration).
+# Derived from Vehicles/gokce/params.parm with the params below reset to
+# the values in that log's onboard PARM dump; SIM_OPOS = its arming point;
+# SIM_WIND = its EKF wind estimate (4.1 m/s from 44 deg). Servo/RC remap
+# and [SITL] invariants kept from gokce. Mission:
+# Scripts/control/logs/real_00000016_mission.waypoints (extracted from the log).
+#
 # gokce params.parm — ArduPlane QuadPlane SITL parameters for CezeriSim
 #
 # Source: gökçesuasvideo22mayısparametreleri.param
@@ -47,9 +59,9 @@ SIM_GPS_HZ      5       # [SITL] matches the real GPS1_RATE_MS 200 (5 Hz)
 # The real 22-may flight had ~3 m/s at hover; direction was not recorded —
 # 270 (westerly) is a placeholder, update it if the real log's wind estimate
 # says otherwise. Set SIM_WIND_SPD 0 for the old zero-wind behaviour.
-SIM_WIND_SPD    3.0     # [SITL] mean wind speed m/s (~real 22-may conditions)
-SIM_WIND_DIR    270     # [SITL] direction wind blows FROM, deg (placeholder)
-SIM_WIND_TURB   0.5     # [SITL] gust standard deviation m/s
+SIM_WIND_SPD    4.1     # [SITL] mean wind speed m/s (~real 22-may conditions)  # [flight16: real log value]
+SIM_WIND_DIR    44     # [SITL] direction wind blows FROM, deg (placeholder)  # [flight16: real log value]
+SIM_WIND_TURB   1.0     # [SITL] gust standard deviation m/s  # [flight16: real log value]
 
 # ---- Airspeed (real envelope; sensor disabled in SITL) -------------------------
 # Real vehicle: ARSPD_TYPE=1 (MS4525 present) but ARSPD_USE=0 — the 22-may
@@ -58,10 +70,10 @@ ARSPD_TYPE      0           # [SITL] real=1 (sensor present but unused)
 ARSPD_USE       0           # real value (!)
 ARSPD_RATIO     2           # real
 ARSPD_OPTIONS   11          # real
-AIRSPEED_CRUISE 24          # real (was 18 on the 21-may param set)
+AIRSPEED_CRUISE 19          # real (was 18 on the 21-may param set)  # [flight16: real log value]
 AIRSPEED_MIN    17          # real
-AIRSPEED_MAX    28          # real
-AIRSPEED_STALL  16          # real
+AIRSPEED_MAX    26          # real  # [flight16: real log value]
+AIRSPEED_STALL  15          # real  # [flight16: real log value]
 
 # ---- EKF selection [SITL-pinned, real uses EKF3 too] ---------------------------
 AHRS_EKF_TYPE   3           # real=3; EKF2 is broken on the 4.6.3 JSON backend (BUGFIXES 2026-06-10)
@@ -104,8 +116,8 @@ EK3_GND_EFF_DZ  4
 # UE DefaultHomeLat/Lon on the JSONBridge component. Real field elevation is
 # 9.47 m AMSL; sim uses 0 (waypoint altitudes are home-RELATIVE, frame 3, so
 # the trajectory is identical — only absolute AMSL in logs differs by 9.47 m).
-SIM_OPOS_LAT    41.1014243
-SIM_OPOS_LNG    28.5518990
+SIM_OPOS_LAT    41.1008290  # [flight16: real log value]
+SIM_OPOS_LNG    28.5516954  # [flight16: real log value]
 SIM_OPOS_ALT    0.0
 SIM_OPOS_HDG    0
 
@@ -147,12 +159,12 @@ THR_SLEWRATE    100
 THROTTLE_NUDGE  1
 TRIM_THROTTLE   45
 SCALING_SPEED   15
-ROLL_LIMIT_DEG  33          # real (was 45 on the 21-may set)
-PTCH_LIM_MAX_DEG    30      # real (was 20)
-PTCH_LIM_MIN_DEG   -30      # real (was -25)
+ROLL_LIMIT_DEG  45          # real (was 45 on the 21-may set)  # [flight16: real log value]
+PTCH_LIM_MAX_DEG    25      # real (was 20)  # [flight16: real log value]
+PTCH_LIM_MIN_DEG   -25      # real (was -25)  # [flight16: real log value]
 LEVEL_ROLL_LIMIT 5
 STALL_PREVENTION 1
-KFF_RDDRMIX     0           # real (was 0.5 on the 21-may set)
+KFF_RDDRMIX     0.5           # real (was 0.5 on the 21-may set)  # [flight16: real log value]
 KFF_THR2PTCH    0
 RUDD_DT_GAIN    10
 MIXING_GAIN     0.5
@@ -244,10 +256,10 @@ LAND_THEN_NEUTRL    0
 LAND_TYPE       0
 
 # ---- QuadPlane transition (real, verbatim) ----------------------------------------
-Q_TRANSITION_MS 10000
-Q_ASSIST_SPEED  16          # real (was 13 on 21-may; stall band note resolved)
+Q_TRANSITION_MS 5000  # [flight16: real log value]
+Q_ASSIST_SPEED  12          # real (was 13 on 21-may; stall band note resolved)  # [flight16: real log value]
 Q_ASSIST_ANGLE  40
-Q_ASSIST_ALT    40
+Q_ASSIST_ALT    0  # [flight16: real log value]
 Q_ASSIST_DELAY  0.5
 Q_BACKTRANS_MS  3000
 Q_BCK_PIT_LIM   10
@@ -275,7 +287,7 @@ Q_M_THST_EXPO   0.65
 Q_M_HOVER_LEARN 0           # [SITL] real=2 (learn+save) — pinned so the real learned value below is never overwritten
 # Real learned hover point (22-may flight): through AP's expo+spin path this is
 # actuator a=0.5112 → u=0.5590 → hover PWM ≈ 1559 → kThrust=(10·9.81/4)/u²=78.49 N
-Q_M_THST_HOVER  0.3488028   # real learned value, verbatim
+Q_M_THST_HOVER  0.35   # real learned value, verbatim  # [flight16: real log value]
 Q_M_YAW_HEADROOM    200
 Q_M_BOOST_SCALE 0
 Q_RC_SPEED      490
@@ -369,8 +381,8 @@ Q_LOIT_BRK_ACCEL    50
 Q_LOIT_BRK_DELAY    1
 Q_LOIT_BRK_JERK 250
 Q_WP_SPEED      500
-Q_WP_SPEED_UP   450         # real (was 125 on 21-may set)
-Q_WP_SPEED_DN   400         # real (was 125)
+Q_WP_SPEED_UP   300         # real (was 125 on 21-may set)  # [flight16: real log value]
+Q_WP_SPEED_DN   125         # real (was 125)  # [flight16: real log value]
 Q_WP_ACCEL      100
 Q_WP_ACCEL_Z    100
 Q_WP_RADIUS     500
@@ -383,7 +395,7 @@ Q_GUIDED_MODE   1
 Q_OPTIONS       0
 
 # ---- QuadPlane land / RTL (real, verbatim) ------------------------------------------
-Q_LAND_FINAL_ALT    10
+Q_LAND_FINAL_ALT    20  # [flight16: real log value]
 Q_LAND_FINAL_SPD    1
 Q_LAND_ALTCHG   0.2
 Q_LAND_ICE_CUT  1
