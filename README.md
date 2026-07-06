@@ -30,35 +30,66 @@ stored in **Git LFS**. You must clone with Git LFS installed — do **not** use
 GitHub's "Download ZIP" button, it gives you tiny LFS pointer files instead of
 the real binaries and the simulator will not launch.
 
-1. Install [Git for Windows](https://git-scm.com/download/win) (Git LFS is
-   included by default; keep the default "Checkout Windows-style" option — the
-   repo forces correct line endings itself).
-2. Clone:
+### 1. Install Git + Git LFS
 
-   ```powershell
-   git lfs install
-   git clone https://github.com/omerozbek/CezeriSim.git
-   cd CezeriSim
-   ```
+- **Windows:** install [Git for Windows](https://git-scm.com/download/win)
+  (Git LFS is included; keep the default "Checkout Windows-style" option —
+  the repo forces correct line endings itself).
+- **macOS:** `brew install git git-lfs`
+- **Linux:** `sudo apt install git git-lfs` (or your distro's equivalent)
 
-3. Verify LFS content downloaded (should print ~290 MB, not a few hundred bytes):
+Then, once per machine:
 
-   ```powershell
-   git lfs ls-files --size
-   ```
+```
+git lfs install
+```
 
-   If files show as pointers, run `git lfs pull`.
+### 2. Clone only your platform
 
-> **Tip — skip other platforms' binaries.** Once multiple platform builds are
-> in the repo, each clone downloads all of them (~600 MB per platform). To
-> fetch only yours, e.g. Windows:
->
-> ```powershell
-> git clone --no-checkout https://github.com/omerozbek/CezeriSim.git
-> cd CezeriSim
-> git config lfs.fetchinclude "Windows/**"
-> git checkout main
-> ```
+Each platform build is ~600 MB of LFS binaries. A plain `git clone` downloads
+**all** platforms — instead, clone with your platform selected so only your
+files are downloaded. Replace `Windows` with `Linux` or `Mac` in **both**
+places:
+
+```
+git clone --filter=blob:none --no-checkout https://github.com/omerozbek/CezeriSim.git
+cd CezeriSim
+git sparse-checkout set Windows
+git config lfs.fetchinclude "Windows/**"
+git checkout main
+```
+
+What this does:
+
+- `--no-checkout` + `sparse-checkout set` — only your platform's folder (plus
+  top-level files like this README) appears in the working tree.
+- `lfs.fetchinclude` — Git LFS downloads only your platform's binaries, now
+  and on every future `git pull`.
+- `--filter=blob:none` — remaining git objects are fetched on demand instead
+  of up front.
+
+To add another platform later:
+
+```
+git sparse-checkout add Linux
+git config lfs.fetchinclude "Windows/**,Linux/**"
+git checkout main
+```
+
+If you don't care about download size, a plain `git clone` (with Git LFS
+installed) still works and gets everything.
+
+### 3. Verify
+
+The game binary must be real content, not an LFS pointer (should be
+~300 MB, not a few hundred bytes):
+
+```powershell
+Get-Item Windows\CezeriSim\Binaries\Win64\CezeriSim.exe   # Windows
+ls -lh Linux/CezeriSim/Binaries/Linux/CezeriSim           # Linux/Mac: du -sh Mac/
+```
+
+If it is tiny, run `git lfs pull` inside the repo.
 
 ## Prerequisites
 
