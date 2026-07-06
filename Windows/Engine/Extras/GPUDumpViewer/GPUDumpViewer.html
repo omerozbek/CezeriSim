@@ -16,7 +16,7 @@ const k_style_main_div_margin = 15;
 const k_null_json_ptr = "00000000000000000000";
 
 const k_texture_zoom_local_storage = 'texture_zoom';
-
+const k_relative_zoom_local_storage = 'relative_zoom';
 
 // -------------------------------------------------------------------- GLOBALS
 
@@ -24,6 +24,7 @@ var g_dump_service = {};
 var g_infos = {};
 var g_dump_cvars = {};
 var g_passes = [];
+var g_referenced_structs = {};
 var g_descs = {};
 
 var g_view = null;
@@ -787,7 +788,7 @@ function display_pass_hierarchy()
 				parent_event_scopes.push(scope);
 			}
 
-			html += `<a style="padding-left: ${10 + 16 * pass_event_scopes.length}px;" href="#display_pass(${pass_id});">${pass_data['EventName']}</a>`;
+			html += `<a style="padding-left: ${10 + 16 * pass_event_scopes.length}px;" href="#display_pass;${pass_id}">${pass_data['EventName']}</a>`;
 		}
 	});
 	document.getElementById('pass_hierarchy').innerHTML = html;
@@ -841,7 +842,7 @@ class PassView extends IView
 			<div class="pass_title main_div">
 				<div id="pass_frame_list" style="display:none;"></div>
 				${this.pass_data['EventName']}
-				<div class="button_list" style="display:inline-block;"><a href="#display_pass_parameters(${this.pass_id});">PassParameters</a></div>
+				<div class="button_list" style="display:inline-block;"><a href="#display_pass_parameters;${this.pass_id}">PassParameters</a></div>
 			</div>
 			<table width="100%">
 				<tr>
@@ -943,8 +944,8 @@ class PassView extends IView
 		var next_frame_href = '';
 		if (this.resource_view.resource_desc['Desc'] == 'FRDGParameterStruct')
 		{
-			prev_frame_href = `#display_pass_parameters(${prev_frame_pass_id});`;
-			next_frame_href = `#display_pass_parameters(${next_frame_pass_id});`;
+			prev_frame_href = `#display_pass_parameters;${prev_frame_pass_id}`;
+			next_frame_href = `#display_pass_parameters;${next_frame_pass_id}`;
 		}
 		else
 		{
@@ -964,13 +965,13 @@ class PassView extends IView
 			}
 			else if (is_output_resource)
 			{
-				prev_frame_href = `#display_output_resource(${prev_frame_pass_id},'${get_subresource_unique_name(prev_frame_subresource_info)}');`;
-				next_frame_href = `#display_output_resource(${next_frame_pass_id},'${get_subresource_unique_name(next_frame_subresource_info)}');`;
+				prev_frame_href = `#display_output_resource;${prev_frame_pass_id};${encodeURIComponent(get_subresource_unique_name(prev_frame_subresource_info))}`;
+				next_frame_href = `#display_output_resource;${next_frame_pass_id};${encodeURIComponent(get_subresource_unique_name(next_frame_subresource_info))}`;
 			}
 			else
 			{
-				prev_frame_href = `#display_input_resource(${prev_frame_pass_id},'${get_subresource_unique_name(prev_frame_subresource_info)}');`;
-				next_frame_href = `#display_input_resource(${next_frame_pass_id},'${get_subresource_unique_name(next_frame_subresource_info)}');`;
+				prev_frame_href = `#display_input_resource;${prev_frame_pass_id};${encodeURIComponent(get_subresource_unique_name(prev_frame_subresource_info))}`;
+				next_frame_href = `#display_input_resource;${next_frame_pass_id};${encodeURIComponent(get_subresource_unique_name(next_frame_subresource_info))}`;
 			}
 		}
 
@@ -992,7 +993,7 @@ class PassView extends IView
 			var href = null;
 			if (resource_desc)
 			{
-				href = `#display_input_resource(${this.pass_id},'${subresource_unique_name}');`
+				href = `#display_input_resource;${this.pass_id};${encodeURIComponent(subresource_unique_name)}`
 			}
 
 			display_list.push({'name': name, 'href': href});
@@ -1028,11 +1029,11 @@ class PassView extends IView
 			{
 				if (draw_id >= 0)
 				{
-					href = `#display_draw_output_resource(${this.pass_id},'${subresource_unique_name}',${draw_id});`;
+					href = `#display_draw_output_resource;${this.pass_id};${encodeURIComponent(subresource_unique_name)};${draw_id}`;
 				}
 				else
 				{
-					href = `#display_output_resource(${this.pass_id},'${subresource_unique_name}');`;
+					href = `#display_output_resource;${this.pass_id};${encodeURIComponent(subresource_unique_name)}`;
 				}
 			}
 
@@ -1063,7 +1064,7 @@ class PassView extends IView
 			var href = null;
 			if (subresource_unique_name && is_output_resource)
 			{
-				href = `#display_draw_output_resource(${this.pass_id},'${subresource_unique_name}',${draw_id});`;
+				href = `#display_draw_output_resource;${this.pass_id};${encodeURIComponent(subresource_unique_name)};${draw_id}`;
 			}
 
 			display_list.push({
@@ -1077,7 +1078,7 @@ class PassView extends IView
 			var href = null;
 			if (is_output_resource)
 			{
-				href = `#display_output_resource(${this.pass_id},'${subresource_unique_name}');`;
+				href = `#display_output_resource;${this.pass_id};${encodeURIComponent(subresource_unique_name)}`;
 			}
 
 			display_list.push({
@@ -1121,7 +1122,7 @@ class PassView extends IView
 			{
 				display_list.push({
 					'name': g_passes[pass_id]['EventName'],
-					'href': `#display_output_resource(${pass_id},'${subresource_unique_name}');`,
+					'href': `#display_output_resource;${pass_id};${encodeURIComponent(subresource_unique_name)}`,
 				});
 			}
 		}
@@ -1162,7 +1163,7 @@ class PassView extends IView
 			{
 				display_list.push({
 					'name': g_passes[pass_id]['EventName'],
-					'href': `#display_input_resource(${pass_id},'${subresource_unique_name}');`,
+					'href': `#display_input_resource;${pass_id};${encodeURIComponent(subresource_unique_name)}`,
 				});
 			}
 		}
@@ -1205,7 +1206,7 @@ class PassView extends IView
 
 	get navigations()
 	{
-		var navs = [`display_pass(${this.pass_id});`];
+		var navs = [`display_pass;${this.pass_id}`];
 
 		if (this.resource_view !== null)
 		{
@@ -1305,11 +1306,11 @@ function display_pass(pass_id)
 	// Load first resource
 	if (g_passes[pass_id]['OutputResources'][0])
 	{
-		redirect_to_hash(`display_output_resource(${pass_id},'${g_passes[pass_id]['OutputResources'][0]}');`);
+		redirect_to_hash('display_output_resource', pass_id, g_passes[pass_id]['OutputResources'][0]);
 	}
 	else if (g_passes[pass_id]['InputResources'][0])
 	{
-		redirect_to_hash(`display_input_resource(${pass_id},'${g_passes[pass_id]['InputResources'][0]}');`);
+		redirect_to_hash('display_input_resource', pass_id, g_passes[pass_id]['InputResources'][0]);
 	}
 	else
 	{
@@ -1340,6 +1341,16 @@ function display_input_resource(pass_id, subresource_unique_name)
 	else
 	{
 		subresource_version_info['pass'] = k_null_json_ptr;
+	}
+
+	// Check if a re-dump version exists (created by r.DumpGPU.RedumpInputs).
+	// This version captures the resource at the point the consuming pass reads it,
+	// which includes modifications from passes excluded by r.DumpGPU.Root.
+	var consuming_pass_ptr = g_passes[pass_id]['Pointer'];
+	var redump_version_name = `${subresource_unique_name}.v${consuming_pass_ptr}`;
+	if (does_file_exists(`Resources/${redump_version_name}.bin`)) 
+	{
+		subresource_version_info['pass'] = consuming_pass_ptr;
 	}
 
 	display_pass_internal(pass_id);
@@ -1420,7 +1431,7 @@ class ConsoleView extends IView
 
 	get navigations()
 	{
-		return [`display_console();`];
+		return [`display_console`];
 	}
 }
 
@@ -1515,7 +1526,7 @@ class InfosView extends IView
 
 	get navigations()
 	{
-		return [`display_infos();`];
+		return [`display_infos`];
 	}
 }
 
@@ -1544,7 +1555,7 @@ const k_tips = [
 	'Make sure to browse the dump informations.',
 	'Make sure to browse the console variables.',
 	'Make sure to browse the log file.',
-	'Share the part of the URL after the # (for instance #display_input_resource(96,\'TSR.AntiAliasing.Noise.000000006b9b2c00.mip0\');) to anyone else whom have this GPU dump to so they too can navigate to the exact same resource view.',
+	'Share the part of the URL after the # (for instance #display_input_resource;96;TSR.AntiAliasing.Noise.000000006b9b2c00.mip0) to anyone else whom have this GPU dump to so they too can navigate to the exact same resource view.',
 	'Set r.DumpGPU.Viewer.Visualize in your ConsoleVariables.ini so the dump viewer automatically open this RDG output resource at startup.',
 
 	// Buffer visualization
@@ -1573,14 +1584,14 @@ class TipView extends IView
 				<div>User tip:</div>
 				<div style="padding: 20px;">${k_tips[this.tip_id]}</div>
 				<div class="button_list" style="margin-left: auto; display: block; width: 100px;">
-						<a href="#display_tip(${(this.tip_id + 1) % k_tips.length});">Next</a>
+						<a href="#display_tip;${(this.tip_id + 1) % k_tips.length}">Next</a>
 				</div>
 			</div>`;
 	}
 
 	get navigations()
 	{
-		return [`display_tip(${this.tip_id});`];
+		return [`display_tip;${this.tip_id}`];
 	}
 }
 
@@ -1703,7 +1714,7 @@ class CVarsView extends IView
 
 	get navigations()
 	{
-		return [`display_cvars();`];
+		return [`display_cvars`];
 	}
 
 	release()
@@ -1787,7 +1798,7 @@ class LogView extends IView
 
 	get navigations()
 	{
-		return [`display_log();`];
+		return [`display_log`];
 	}
 
 	resize(ctx)
@@ -2207,6 +2218,13 @@ class TextureView extends ResourceView
 						<div class="button_list">
 							<input type="button" onclick="g_view.resource_view.copy_canvas_to_clipboard();" value="Copy to clipboard"/>
 						</div>
+						<div class="button_list">
+							<label title="When enabled, switching between textures of different dimensions preserves the relative zoom position (useful for comparing pre/post upscaling).">
+                                <input type="checkbox" id="relative_zoom_checkbox"
+                                    onchange="set_local_storage(k_relative_zoom_local_storage, this.checked ? '1' : '0');"
+                                /> Relative zoom
+                            </label>
+						</div>
 					</div>
 					<div id="canvas_viewport">
 						<canvas
@@ -2278,6 +2296,12 @@ class TextureView extends ResourceView
 			document.getElementById('canvas_outter').onmouseleave = function(event) { texture_view.set_select_viewport(false); };
 		}
 
+		// Restore relative zoom checkbox state
+		var relative_zoom_checkbox = document.getElementById('relative_zoom_checkbox');
+		if (relative_zoom_checkbox) {
+			relative_zoom_checkbox.checked = (get_local_storage(k_relative_zoom_local_storage) === '1');
+		}
+
 		if (this.subresource_desc['raw_channel_format'] == 'float')
 		{
 			update_value_selection(document.getElementById('texture_visualization_change_display_modes'), this.display_mode);
@@ -2323,7 +2347,7 @@ class TextureView extends ResourceView
 			}
 			else
 			{
-				texture_view.error(`Error: Resources/${subresource_version_name}.bin couldn't be loaded.`);
+				texture_view.error(`Error: Resources/${subresource_version_name}.bin couldn't be loaded. This might be caused by OS path limitation. Try moving the dump folder closer to root.`);
 			}
 		});
 
@@ -2579,7 +2603,7 @@ class TextureView extends ResourceView
 
 			if (zooming_in)
 			{
-				if (this.pixel_scaling == 0)
+				if (this.pixel_scaling <= 0)
 				{
 					if (min_pixel_scaling <= 16)
 					{
@@ -2625,7 +2649,8 @@ class TextureView extends ResourceView
 			8: '8:1',
 			16: '16:1',
 		};
-		update_value_selection(document.getElementById('texture_visualization_change_pixel_scaling'), pixel_scaling_names[this.pixel_scaling]);
+		var name = pixel_scaling_names[this.pixel_scaling] || '';
+		update_value_selection(document.getElementById('texture_visualization_change_pixel_scaling'), name);
 	}
 
 	canvas_click(event)
@@ -2834,6 +2859,11 @@ class TextureView extends ResourceView
 
 	is_zoom_settings_compatible(zoom_settings)
 	{
+		// Always compatible when relative zoom is enabled
+		if (get_local_storage(k_relative_zoom_local_storage) === '1') {
+			return true;
+		}
+
 		var subresource_extent = this.get_subresource_extent();
 
 		return (zoom_settings['subresource_extent_x'] == subresource_extent['x'] && zoom_settings['subresource_extent_y'] == subresource_extent['y']);
@@ -2843,11 +2873,31 @@ class TextureView extends ResourceView
 	{
 		var canvas_viewport = document.getElementById('canvas_viewport');
 
-		this.pixel_scaling = zoom_settings['pixel_scaling'];
-		this.canvas.style.width = zoom_settings['canvas_width'];
-		this.canvas.style.height = zoom_settings['canvas_height'];
-		canvas_viewport.scrollLeft = zoom_settings['canvas_viewport_scoll_left'];
-		canvas_viewport.scrollTop = zoom_settings['canvas_viewport_scoll_top'];
+		var subresource_extent = this.get_subresource_extent();
+		var prev_extent_x = zoom_settings['subresource_extent_x'];
+		var prev_extent_y = zoom_settings['subresource_extent_y'];
+		var same_extent = (prev_extent_x == subresource_extent['x'] &&
+						   prev_extent_y == subresource_extent['y']);
+
+		if (same_extent || get_local_storage(k_relative_zoom_local_storage) !== '1')
+		{
+			this.pixel_scaling = zoom_settings['pixel_scaling'];
+			this.canvas.style.width = zoom_settings['canvas_width'];
+			this.canvas.style.height = zoom_settings['canvas_height'];
+			canvas_viewport.scrollLeft = zoom_settings['canvas_viewport_scoll_left'];
+			canvas_viewport.scrollTop = zoom_settings['canvas_viewport_scoll_top'];
+		}
+		else {
+			var prev_canvas_w = parseFloat(zoom_settings['canvas_width']);
+			var prev_canvas_h = parseFloat(zoom_settings['canvas_height']);
+
+			this.canvas.style.width = prev_canvas_w + 'px';
+			this.canvas.style.height = prev_canvas_h + 'px';
+			canvas_viewport.scrollLeft = zoom_settings['canvas_viewport_scoll_left'];
+			canvas_viewport.scrollTop = zoom_settings['canvas_viewport_scoll_top'];
+
+			this.pixel_scaling = -1;
+		}
 
 		this.update_change_pixel_scaling_button();
 		this.save_zoom_settings();
@@ -4015,7 +4065,7 @@ class GenericBufferView extends ResourceView
 			else
 			{
 				document.getElementById('buffer_content_pannel').innerHTML = `
-					Error: ${this.raw_buffer_data_path} couldn't be loaded.`;
+					Error: ${buffer_view.raw_buffer_data_path} couldn't be loaded.`;
 			}
 		});
 
@@ -4145,6 +4195,10 @@ class GenericBufferView extends ResourceView
 				else if (it.base_type == 'UBMT_FLOAT32')
 				{
 					column_format = 'float';
+				}
+				else if (it.base_type == 'UBMT_REFERENCED_STRUCT')
+				{
+					column_format = 'referenced_struct';
 				}
 				else
 				{
@@ -4352,7 +4406,15 @@ class GenericBufferView extends ResourceView
 
 					if (this.display_elem_using_rows && i == 1 && this.structure_metadata)
 					{
-						display = `hex(${display})`;
+						if (display != 'referenced_struct') {
+							display = `hex(${display})`;
+						}
+						else
+						{
+							value = '-';
+							resource_content += `<td>${value}</td>`;
+							continue;
+						}
 					}
 
 					if (display == 'float')
@@ -4410,6 +4472,40 @@ class GenericBufferView extends ResourceView
 					else if (display == 'bin(char)' || display == 'bin(uchar)')
 					{
 						value = '0b' + (new Uint8Array(this.raw_buffer_data, byte_offset, 1))[0].toString(2).padStart(8, 0);
+					}
+					else if (display == 'referenced_struct')
+					{
+						// Check if this pass has referenced struct data for this member
+						var pass_pointer = this.subresource_version_info['pass'];
+						var ref_structs = g_referenced_structs[pass_pointer];
+						if (ref_structs && ref_structs[member_names[member_id]])
+						{
+							// Find the pass_id from the pass pointer
+							var link_pass_id = -1;
+							for (var pid = 0; pid < g_passes.length; pid++)
+							{
+								if (g_passes[pid]['Pointer'] == pass_pointer)
+								{
+									link_pass_id = pid;
+									break;
+								}
+							}
+
+							if (link_pass_id >= 0)
+							{
+								var ref_meta = ref_structs[member_names[member_id]];
+								var ref_struct_metadata = load_structure_metadata(ref_meta['Metadata']);
+								value = `<a href="#display_referenced_struct;${link_pass_id};${encodeURIComponent(member_names[member_id])}" title="Click to view ${ref_struct_metadata['StructTypeName']} uniform buffer contents">${ref_struct_metadata['StructTypeName']}</a>`;
+							}
+							else
+							{
+								value = '(referenced struct)';
+							}
+						}
+						else
+						{
+								value = '(not available. Enable r.RHI.UniformBufferContentMap.Enable)';
+						}
 					}
 					else
 					{
@@ -4511,6 +4607,48 @@ function display_pass_parameters(pass_id)
 	g_view.set_resource_view(new ParameterStructureView(subresource_version_info, resource_desc, structure_metadata));
 }
 
+// -------------------------------------------------------------------- REFERENCED STRUCT DISPLAY
+
+function display_referenced_struct(pass_id, member_name) {
+
+	display_pass_internal(pass_id);
+
+	var pass_data = g_passes[pass_id];
+	var pass_pointer = pass_data['Pointer'];
+
+	var ref_structs = g_referenced_structs[pass_pointer];
+	if (!ref_structs || !ref_structs[member_name]) {
+		set_main_view(null);
+		return;
+	}
+
+	var ref_entry = ref_structs[member_name];
+
+	if (!does_file_exists(`Structures/${ref_entry['Content']}.bin`))
+	{
+		add_console_event('error', `Referenced struct "${member_name}" binary not found. Set r.RHI.UniformBufferContentMap.Enable=true and dump again.`);
+		return;
+	}
+
+	var structure_metadata = load_structure_metadata(ref_entry['Metadata']);
+
+	var subresource_version_info = {};
+	subresource_version_info['subresource'] = null;
+	subresource_version_info['resource'] = ref_entry['Content'];
+	subresource_version_info['pass'] = pass_data['Pointer'];
+	subresource_version_info['draw'] = -1;
+
+	var resource_desc = {};
+	resource_desc['Name'] = member_name;
+	resource_desc['ByteSize'] = structure_metadata['Size'];
+	resource_desc['Desc'] = 'FRDGParameterStruct';
+	resource_desc['BytesPerElement'] = resource_desc['ByteSize'];
+	resource_desc['NumElements'] = 1;
+	resource_desc['Metadata'] = ref_entry['Metadata'];
+	resource_desc['Usage'] = [];
+
+	g_view.set_resource_view(new ParameterStructureView(subresource_version_info, resource_desc, structure_metadata));
+}
 
 // -------------------------------------------------------------------- GENERIC 3D STRUCTURE VIEW
 
@@ -5138,7 +5276,7 @@ void main(void) {
 			}
 			else
 			{
-				raytracing_view.error(`Error: Resources/${subresource_version_name}.bin couldn't be loaded.`);
+				raytracing_view.error(`Error: Resources/${subresource_version_name}.bin couldn't be loaded. This might be caused by OS path limitation. Try moving the dump folder closer to root.`);
 			}
 		});
 
@@ -5558,6 +5696,17 @@ function update_href_selection(parent)
 			a.classList.remove('match_location_hash');
 		}
 	};
+
+	// Scroll the pass hierarchy view to keep the selected pass visible if '-' or '+' is used
+	var pass_hierarchy = document.getElementById('pass_hierarchy');
+	if (pass_hierarchy)
+	{
+		var selected = pass_hierarchy.querySelector('a.match_location_hash');
+		if (selected)
+		{
+			selected.scrollIntoView({block:'nearest', behavior:'instant'});
+		}
+	}
 }
 
 function update_value_selection(parent, selected_value)
@@ -5690,11 +5839,11 @@ function init_top()
 function init_top_buttons()
 {
 	document.getElementById('top_buttons').innerHTML = `
-		<a href="#display_infos();">Infos</a>
-		<a href="#display_cvars();">CVars</a>
-		<a href="#display_log();">Log</a>`;
+		<a href="#display_infos">Infos</a>
+		<a href="#display_cvars">CVars</a>
+		<a href="#display_log">Log</a>`;
 	document.getElementById('top_viewer_buttons').innerHTML = `
-		<a id="console_button" href="#display_console();">Console</a>`;
+		<a id="console_button" href="#display_console">Console</a>`;
 	update_console_button();
 }
 
@@ -5783,6 +5932,21 @@ function init_page()
 		}
 	}
 
+	// Load referenced struct mapping.
+	g_referenced_structs = {};
+	if (does_file_exists('Base/ReferencedStructs.json'))
+	{
+		try {
+			var ref_structs_list = load_json_dict_sequence('Base/ReferencedStructs.json');
+			for (var entry of ref_structs_list) {
+				g_referenced_structs[entry['Pass']] = entry['ReferencedStructs'];
+			}
+		}
+		catch (e) {
+			add_console_event('log', 'ReferencedStructs.json found but could not be parsed.');
+		}	
+	}
+
 	// Load all the resource descriptors
 	{
 		g_descs = {};
@@ -5852,7 +6016,7 @@ function init_page()
 
 		if (pass_id_to_open != -1)
 		{
-			return redirect_to_hash(`display_output_resource(${pass_id_to_open},'${subresource_unique_name_to_open}');`);
+			return redirect_to_hash('display_output_resource', pass_id_to_open, subresource_unique_name_to_open);
 		}
 	}
 	
@@ -5914,14 +6078,48 @@ function onresize_body()
 
 var g_previous_location_hash = null;
 
-function redirect_to_hash(new_hash)
+function redirect_to_hash(action)
 {
+	var parts = [action];
+	for (var i = 1; i < arguments.length; i++)
+	{
+		parts.push(encodeURIComponent(arguments[i]));
+	}
+	var new_hash = parts.join(';');
+
 	if (new_hash === g_previous_location_hash)
 	{
 		return;
 	}
 
 	location.hash = new_hash;
+}
+
+function dispatch_navigation(hash_str)
+{
+	var parts = hash_str.split(';');
+	var action = parts[0];
+	var args = [];
+	for (var i = 1; i < parts.length; i++)
+	{
+		args.push(decodeURIComponent(parts[i]));
+	}
+
+	switch (action)
+	{
+		case 'display_pass':                  display_pass(args[0]); break;
+		case 'display_pass_parameters':       display_pass_parameters(args[0]); break;
+		case 'display_referenced_struct':     display_referenced_struct(args[0], args[1]); break;
+		case 'display_tip':                   display_tip(args[0]); break;
+		case 'display_infos':                 display_infos(); break;
+		case 'display_cvars':                 display_cvars(); break;
+		case 'display_log':                   display_log(); break;
+		case 'display_console':               display_console(); break;
+		case 'display_output_resource':       display_output_resource(args[0], args[1]); break;
+		case 'display_input_resource':        display_input_resource(args[0], args[1]); break;
+		case 'display_draw_output_resource':  display_draw_output_resource(args[0], args[1], args[2]); break;
+		default:                              add_console_event('error', `Unknown navigation action: "${action}"`); break;
+	}
 }
 
 function navigate_to_hash()
@@ -5935,8 +6133,8 @@ function navigate_to_hash()
 
 	if (location.hash)
 	{
-		var js = location.hash.substring(1);
-		eval(js);
+		var hash_str = location.hash.substring(1);
+		dispatch_navigation(hash_str);
 	}
 	else
 	{
@@ -6582,6 +6780,18 @@ input::placeholder
 #buffer_outter #buffer_viewport #buffer_content_table tr.highlighted
 {
 	color: var(--button-txt-color-selected);
+}
+
+#buffer_outter #buffer_viewport #buffer_content_table tr td a[href]
+{
+	color: var(--button-txt-color-selected);
+	cursor: pointer;
+	display: inline;
+}
+
+#buffer_outter #buffer_viewport #buffer_content_table tr td a[href]:hover
+{
+	color: var(--button-txt-color-hover);
 }
 
 </style>

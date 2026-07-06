@@ -4,7 +4,7 @@
         "name": "VK_LAYER_KHRONOS_shader_object",
         "type": "GLOBAL",
         "library_path": ".\\VkLayer_khronos_shader_object.dll",
-        "api_version": "1.4.304",
+        "api_version": "1.4.341",
         "implementation_version": "1",
         "description": "Khronos Shader object layer",
         "instance_extensions": [

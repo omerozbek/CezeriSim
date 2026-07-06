@@ -4,7 +4,7 @@
         "name": "VK_LAYER_LUNARG_api_dump",
         "type": "GLOBAL",
         "library_path": ".\\VkLayer_api_dump.dll",
-        "api_version": "1.4.304",
+        "api_version": "1.4.341",
         "implementation_version": "2",
         "description": "LunarG API dump layer",
         "introduction": "The API Dump utility layer prints API calls, parameters, and values to the identified output stream.",
@@ -165,7 +165,26 @@
                             "description": "Json"
                         }
                     ],
-                    "default": "text"
+                    "default": "text",
+                    "settings": [
+                        {
+                            "key": "pre_dump",
+                            "env": "VK_APIDUMP_PRE_DUMP",
+                            "label": "Pre-dump the parameters.",
+                            "description": "Setting this to true causes parameters to calls be logged before the function as well as after the function.",
+                            "type": "BOOL",
+                            "default": false,
+                            "dependence": {
+                                "mode": "ALL",
+                                "settings": [
+                                    {
+                                        "key": "output_format",
+                                        "value": "text"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
                 },
                 {
                     "key": "file",
@@ -252,7 +271,7 @@
                 {
                     "key": "show_shader",
                     "label": "Show Shader",
-                    "description": "Dump the shader binary code in pCode",
+                    "description": "Dump the shader binary code in pCode as an hex array which can be viewed in https://www.khronos.org/spir/visualizer/",
                     "type": "BOOL",
                     "default": false
                 },

@@ -4,7 +4,7 @@
         "name": "VK_LAYER_KHRONOS_profiles",
         "type": "GLOBAL",
         "library_path": ".\\VkLayer_khronos_profiles.dll",
-        "api_version": "1.4.304",
+        "api_version": "1.4.341",
         "implementation_version": "1.3.0",
         "status": "STABLE",
         "description": "Khronos Profiles layer",
@@ -28,39 +28,11 @@
         "features": {
             "presets": [
                 {
-                    "label": "Force Physical Device Only",
-                    "description": "Use the Profiles layer to force a specific physical device",
-                    "platforms": [ "WINDOWS", "LINUX", "MACOS" ],
-                    "status": "STABLE",
-                    "settings": [
-                        {
-                            "key": "force_device",
-                            "value": "FORCE_DEVICE_WITH_NAME"
-                        },
-                        {
-                            "key": "profile_emulation",
-                            "value": false
-                        },
-                        {
-                            "key": "simulate_capabilities",
-                            "value": []
-                        },
-                        {
-                            "key": "emulate_portability",
-                            "value": false
-                        }
-                    ]
-                },
-                {
                     "label": "Emulate a Vulkan Conformant Profile",
                     "description": "Emulate a Conformant Vulkan Profile",
                     "platforms": [ "WINDOWS", "LINUX", "MACOS" ],
                     "status": "STABLE",
                     "settings": [
-                        {
-                            "key": "force_device",
-                            "value": "FORCE_DEVICE_OFF"
-                        },
                         {
                             "key": "profile_emulation",
                             "value": true
@@ -89,10 +61,6 @@
                     "platforms": [ "WINDOWS", "LINUX", "MACOS" ],
                     "status": "STABLE",
                     "settings": [
-                        {
-                            "key": "force_device",
-                            "value": "FORCE_DEVICE_OFF"
-                        },
                         {
                             "key": "profile_emulation",
                             "value": true
@@ -149,73 +117,6 @@
                 }
             ],
             "settings": [
-                {
-                    "key": "force_device",
-                    "label": "Force Device",
-                    "description": "On system with multiple physical devices, force the use of one specific physical device.",
-                    "status": "STABLE",
-                    "type": "ENUM",
-                    "default": "FORCE_DEVICE_OFF",
-                    "platforms": [ "WINDOWS", "LINUX", "MACOS" ],
-                    "flags": [
-                        {
-                            "key": "FORCE_DEVICE_OFF",
-                            "label": "Off",
-                            "description": "Let the Vulkan Loader list all the Physical Device."
-                        },
-                        {
-                            "key": "FORCE_DEVICE_WITH_UUID",
-                            "label": "Using Device UUID",
-                            "description": "Force the Physical Device identified by the device UUID.",
-                            "settings": [
-                                {
-                                    "key": "force_device_uuid",
-                                    "label": "Device UUID",
-                                    "description": "Device UUID of the forced physical devices",
-                                    "status": "STABLE",
-                                    "platforms": [ "WINDOWS", "LINUX", "MACOS" ],
-                                    "type": "STRING",
-                                    "default": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-                                    "dependence": {
-                                        "mode": "ALL",
-                                        "settings": [
-                                            {
-                                                "key": "force_device",
-                                                "value": "FORCE_DEVICE_WITH_UUID"
-                                            }
-                                        ]
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            "key": "FORCE_DEVICE_WITH_NAME",
-                            "label": "Using Device Name",
-                            "description": "Force the Physical Device identified by the device UUID.",
-                            "settings": [
-                                {
-                                    "key": "force_device_name",
-                                    "label": "Device Name",
-                                    "description": "Device Name of the forced physical devices",
-                                    "status": "STABLE",
-                                    "platforms": [ "WINDOWS", "LINUX", "MACOS" ],
-                                    "type": "ENUM",
-                                    "flags": [],
-                                    "default": "${VP_PHYSICAL_DEVICES}",
-                                    "dependence": {
-                                        "mode": "ALL",
-                                        "settings": [
-                                            {
-                                                "key": "force_device",
-                                                "value": "FORCE_DEVICE_WITH_NAME"
-                                            }
-                                        ]
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
                 {
                     "key": "profile_emulation",
                     "label": "Emulate a Vulkan Profile",
@@ -305,12 +206,32 @@
                                         {
                                             "key": "DEFAULT_FEATURE_VALUES_DEVICE",
                                             "label": "Use Device Values",
-                                            "description": "When a feature is not mentionned in the select Vulkan profiles, set is to the physical device value."
+                                            "description": "When a feature is not mentioned in the select Vulkan profiles, set is to the physical device value."
                                         },
                                         {
                                             "key": "DEFAULT_FEATURE_VALUES_FALSE",
                                             "label": "Use False",
-                                            "description": "When a feature is not mentionned in the select Vulkan profiles, set it to false."
+                                            "description": "When a feature is not mentioned in the select Vulkan profiles, set it to false."
+                                        }
+                                    ]
+                                },
+                                {
+                                    "key": "unknown_feature_values",
+                                    "label": "Unknown Features",
+                                    "description": "Feature values when unrecongnized by Vulkan profiles.",
+                                    "status": "STABLE",
+                                    "type": "ENUM",
+                                    "default": "UNKNOWN_FEATURE_VALUES_UNCHANGED",
+                                    "flags": [
+                                        {
+                                            "key": "UNKNOWN_FEATURE_VALUES_UNCHANGED",
+                                            "label": "Unmodified",
+                                            "description": "When a feature is not recognized by Vulkan profiles, skip it."
+                                        },
+                                        {
+                                            "key": "UNKNOWN_FEATURE_VALUES_DEVICE",
+                                            "label": "Use Device Values",
+                                            "description": "When a feature is not recognized by Vulkan profiles, attempt to load device values."
                                         }
                                     ]
                                 }
@@ -1275,7 +1196,7 @@
                             "key": "DEBUG_REPORT_DEBUG_BIT",
                             "label": "Debug",
                             "description": "Report debug information for the Profiles Layer development.",
-                            "view": "ADVANCED"
+                            "view": "DEBUG"
                         }
                     ],
                     "default": [
