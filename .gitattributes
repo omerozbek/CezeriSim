@@ -14,3 +14,19 @@ Dockerfile text eol=lf
 *.exe filter=lfs diff=lfs merge=lfs -text
 *.pak filter=lfs diff=lfs merge=lfs -text
 *.utoc filter=lfs diff=lfs merge=lfs -text
+*.dll filter=lfs diff=lfs merge=lfs -text
+
+# Linux / macOS builds: the main game binaries are extensionless (ELF / Mach-O),
+# so match shared libraries by extension and the binaries by directory.
+# GitHub rejects non-LFS files over 100 MB — these rules MUST be in place
+# before the first Linux/Mac build is committed.
+*.so    filter=lfs diff=lfs merge=lfs -text
+*.dylib filter=lfs diff=lfs merge=lfs -text
+Linux/**/Binaries/** filter=lfs diff=lfs merge=lfs -text
+Mac/**/Binaries/**   filter=lfs diff=lfs merge=lfs -text
+Mac/**/MacOS/**      filter=lfs diff=lfs merge=lfs -text
+
+# Exception: any shell script inside those trees must stay plain text with LF
+# endings (the directory rules above would otherwise store it as an opaque blob).
+Linux/**/Binaries/**/*.sh -filter -diff -merge text eol=lf
+Mac/**/*.sh              -filter -diff -merge text eol=lf

@@ -49,6 +49,17 @@ the real binaries and the simulator will not launch.
 
    If files show as pointers, run `git lfs pull`.
 
+> **Tip — skip other platforms' binaries.** Once multiple platform builds are
+> in the repo, each clone downloads all of them (~600 MB per platform). To
+> fetch only yours, e.g. Windows:
+>
+> ```powershell
+> git clone --no-checkout https://github.com/omerozbek/CezeriSim.git
+> cd CezeriSim
+> git config lfs.fetchinclude "Windows/**"
+> git checkout main
+> ```
+
 ## Prerequisites
 
 ### 1. Python 3.10+
@@ -72,7 +83,9 @@ plain Python — no extra pip packages required.
 ### 2. Docker Desktop
 
 The ArduPilot SITL flight controller runs in a Linux container, so you need
-Docker Desktop for Windows:
+Docker. On Linux install Docker Engine + the compose plugin
+(<https://docs.docker.com/engine/install/>); on macOS use Docker Desktop for
+Mac. On Windows, install Docker Desktop for Windows:
 
 1. Download Docker Desktop from <https://www.docker.com/products/docker-desktop/>.
 2. Run the installer and keep the default **WSL 2 backend** option enabled
@@ -166,3 +179,41 @@ vehicles): the servo relay is not running. Make sure you started SITL via
 **`CezeriSim.exe` is only a few hundred bytes / won't start**: the clone was
 made without Git LFS (or via "Download ZIP"). Install Git LFS and run
 `git lfs pull` inside the repo.
+
+## Maintainers: adding or updating a platform build
+
+The game reads `Vehicles/` and is launched alongside `Scripts/` from inside
+its own tree, so every platform build ships its own copy of both. Treat
+`Windows/CezeriSim/{Scripts,Vehicles}` as the canonical copy and sync it into
+other platform trees whenever it changes.
+
+**Updating the Windows build:** copy the new packaged build *over* the
+existing `Windows/` tree (do not delete it first — `Scripts/` and `Vehicles/`
+are not part of a UE export and would be lost). Check `git status`, then
+commit.
+
+**Adding a Linux or Mac build** (from a Windows machine):
+
+1. Stage the packaged build to a top-level `Linux/` or `Mac/` folder,
+   mirroring the `Windows/` layout.
+2. Copy `Scripts/` and `Vehicles/` from `Windows/CezeriSim/` into the new
+   platform's `CezeriSim/` folder.
+3. Verify every large binary resolves to LFS **before** committing —
+   GitHub hard-rejects non-LFS files over 100 MB and fixing that later
+   requires rewriting history:
+
+   ```powershell
+   git check-attr filter -- Linux/CezeriSim/Binaries/Linux/CezeriSim
+   # must print: filter: lfs
+   ```
+
+4. Git on Windows does not record the executable bit. After `git add`,
+   mark the launcher and game binaries executable in the index:
+
+   ```powershell
+   git update-index --chmod=+x Linux/CezeriSim.sh Linux/CezeriSim/Binaries/Linux/CezeriSim
+   ```
+
+5. Commit and push, then verify on a real Linux/Mac machine: fresh clone,
+   `ls -l` shows the binaries as executable, and the game finds its
+   `Vehicles/` configs.
