@@ -24,11 +24,14 @@ services:
     # start_sitl_docker.py reads the active vehicle's `backend` field and exports:
     #   backend=ap_native  → AP_MODEL=quadplane  AP_EXTRA=""           (built-in physics)
     #   backend=ue_physics → AP_MODEL=JSON       AP_EXTRA=--sim-port-* (UE provides physics)
+    # AP_HOME is exported by start_sitl_docker.py from the active vehicle's
+    # SIM_OPOS_* params (single source of truth per vehicle). Fallback is the
+    # legacy Istanbul home used by sitl_ue / sitl_default.
     command: >
       --model ${AP_MODEL:-quadplane}
       --defaults /home/ardupilot/vehicle.parm
       ${AP_EXTRA_ARGS:-}
-      --home=41.0082000,28.9784000,0.00,0
+      --home=${AP_HOME:-41.0082000,28.9784000,0.00,0}
       --serial0=tcp:5760
       -I0
 

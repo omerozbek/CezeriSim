@@ -18,4 +18,13 @@ rm -f /home/ardupilot/sitl/eeprom.bin
 # Export HOST_IP so AP_EXTRA_ARGS can reference it if needed (ue_physics mode).
 export HOST_IP
 
-exec /home/ardupilot/ardupilot/build/sitl/bin/arduplane "$@"
+# AP_BINARY selects the SITL vehicle binary:
+#   arduplane  (default) — VTOL QuadPlane vehicles
+#   arducopter           — quadrotor drone vehicles (fleet mode)
+AP_BIN="/home/ardupilot/ardupilot/build/sitl/bin/${AP_BINARY:-arduplane}"
+if [ ! -x "$AP_BIN" ]; then
+    echo "[entrypoint] ERROR: $AP_BIN not found — rebuild the image (docker compose build)"
+    exit 1
+fi
+
+exec "$AP_BIN" "$@"

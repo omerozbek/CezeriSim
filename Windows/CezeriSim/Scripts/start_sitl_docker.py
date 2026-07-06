@@ -1,37 +1,75 @@
 #!/usr/bin/env python3
 """
 start_sitl_docker.py  —  Run from Windows (PowerShell or CMD)
-Starts the CezeriSim ArduPlane SITL container via Docker Compose.
+Starts CezeriSim ArduPilot SITL container(s) via Docker Compose.
 
-Reads the active vehicle from <project>/Vehicles/active_vehicle.txt (or --vehicle flag),
-copies its params.parm to Scripts/vehicle.parm, then launches docker compose.
+Single-vehicle (legacy) mode — no --drones/--vtols flags:
+  Reads the active vehicle from <project>/Vehicles/active_vehicle.txt (or
+  --vehicle flag), copies its params.parm to Scripts/vehicle.parm, then
+  launches docker compose (docker-compose.yml, one ArduPlane container).
+
+Fleet mode — --drones N and/or --vtols M:
+  Starts one SITL container per UAV: ArduCopter for drones, ArduPlane for
+  VTOLs. Generates Scripts/generated/uav<i>.parm + docker-compose.fleet.yml
+  and one servo relay per instance. Ports and homes follow the SAME
+  conventions as UCezeriFleetSubsystem in UE (docs/INVARIANTS.md):
+
+     global index g: drones 0..N-1, VTOLs N..N+M-1
+     UE JSON (SimPort)         9002 + 10*g
+     AP JSON in (host->cont)   9003 + 10*g  -> container 9003
+     AP servo out -> relay      9006 + 10*g  -> forwards to 9002 + 10*g
+     MAVLink SERIAL0 (control)  tcp:127.0.0.1:(5760 + 10*g)
+     MAVLink SERIAL1 (spare)    tcp:127.0.0.1:(5762 + 10*g)
+     MAV_SYSID                  g + 1
+     GPS home                   base SIM_OPOS + g*5 m east
 
 Requirements:
   - Docker Desktop for Windows installed and running
   - Run `docker compose build` once in Scripts/ before first use
+    (rebuild once after updating to fleet support: adds the arducopter binary)
 
 Usage:
-    python start_sitl_docker.py                      # use active_vehicle.txt
-    python start_sitl_docker.py --vehicle pasifik    # override active vehicle
+    python start_sitl_docker.py                      # legacy: single active vehicle
+    python start_sitl_docker.py --drones 3           # 3 ArduCopter drones
+    python start_sitl_docker.py --drones 2 --vtols 1 # mixed fleet
+    python start_sitl_docker.py --vehicle pasifik    # override active vehicle (legacy)
     python start_sitl_docker.py --build              # rebuild image then start
-    python start_sitl_docker.py --stop               # stop the container
+    python start_sitl_docker.py --stop               # stop containers + relays
     python start_sitl_docker.py --logs               # tail container logs
     python start_sitl_docker.py --list               # list available vehicle configs
+    python start_sitl_docker.py --drones 2 --dry-run # generate files, don't start
 """
 
 import argparse
 import json
+import math
 import os
+import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 SCRIPTS_DIR   = Path(__file__).parent
 PROJECT_DIR   = SCRIPTS_DIR.parent
 VEHICLES_DIR  = PROJECT_DIR / "Vehicles"
 ACTIVE_TXT    = VEHICLES_DIR / "active_vehicle.txt"
-VEHICLE_PARM  = SCRIPTS_DIR / "vehicle.parm"   # mounted into container
+ACTIVE_DRONE_TXT = VEHICLES_DIR / "active_drone_vehicle.txt"
+VEHICLE_PARM  = SCRIPTS_DIR / "vehicle.parm"   # mounted into container (legacy mode)
 COMPOSE_FILE  = SCRIPTS_DIR / "docker-compose.yml"
+GENERATED_DIR = SCRIPTS_DIR / "generated"
+FLEET_COMPOSE = GENERATED_DIR / "docker-compose.fleet.yml"
+FLEET_PROJECT = "cezeri-fleet"
+
+# ---- Fleet port/home conventions — MUST match UCezeriFleetSubsystem ---------
+JSON_PORT_BASE   = 9002   # UE JSONBridge bind (SimPort)
+AP_JSON_IN_BASE  = 9003   # host port mapped to container:9003 (AP JSON in)
+SERVO_OUT_BASE   = 9006   # AP servo out -> servo_relay listen
+MAVLINK_TCP_BASE = 5760   # SERIAL0 (control scripts)
+MAVLINK_TCP2_BASE= 5762   # SERIAL1 (spare/visualizer)
+PORT_STRIDE      = 10
+EAST_SPACING_M   = 5.0
+OFFSET_M_PER_DEG = 111319.4908   # spherical constant for the east offset ONLY
 
 
 def run(args: list[str], env: dict | None = None, **kwargs) -> subprocess.CompletedProcess:
@@ -85,9 +123,323 @@ def resolve_host_ipv4() -> str:
     return default
 
 
-def docker_env_for_backend(backend: str) -> dict:
+def read_vehicle_home(vehicle_dir: Path) -> str:
+    """Derive the SITL --home string from the vehicle's SIM_OPOS_* params.
+
+    Per INVARIANTS.md the --home lat/lon/alt must match the vehicle's SIM_OPOS
+    and the UE actor's DefaultHomeLat/Lon/Alt. The params.parm is the single
+    source of truth; this makes home per-vehicle (gokce flies at its real
+    mission site, sitl_ue keeps the legacy Istanbul home)."""
+    default = "41.0082000,28.9784000,0.00,0"
+    parm = vehicle_dir / "params.parm"
+    vals = {"SIM_OPOS_LAT": None, "SIM_OPOS_LNG": None,
+            "SIM_OPOS_ALT": "0.0", "SIM_OPOS_HDG": "0"}
+    try:
+        for line in parm.read_text(encoding="utf-8").splitlines():
+            parts = line.split("#", 1)[0].split()
+            if len(parts) >= 2 and parts[0] in vals:
+                vals[parts[0]] = parts[1]
+    except OSError:
+        return default
+    if vals["SIM_OPOS_LAT"] is None or vals["SIM_OPOS_LNG"] is None:
+        return default
+    home = (f"{float(vals['SIM_OPOS_LAT']):.7f},{float(vals['SIM_OPOS_LNG']):.7f},"
+            f"{float(vals['SIM_OPOS_ALT']):.2f},{float(vals['SIM_OPOS_HDG']):.0f}")
+    return home
+
+
+def read_opos(vehicle_dir: Path) -> dict | None:
+    """Read SIM_OPOS_* from a vehicle's params.parm as the fleet base home."""
+    parm = vehicle_dir / "params.parm"
+    vals = {"SIM_OPOS_LAT": None, "SIM_OPOS_LNG": None,
+            "SIM_OPOS_ALT": "0.0", "SIM_OPOS_HDG": "0"}
+    try:
+        for line in parm.read_text(encoding="utf-8").splitlines():
+            parts = line.split("#", 1)[0].split()
+            if len(parts) >= 2 and parts[0] in vals:
+                vals[parts[0]] = parts[1]
+    except OSError:
+        return None
+    if vals["SIM_OPOS_LAT"] is None or vals["SIM_OPOS_LNG"] is None:
+        return None
+    return {"lat": float(vals["SIM_OPOS_LAT"]), "lon": float(vals["SIM_OPOS_LNG"]),
+            "alt": float(vals["SIM_OPOS_ALT"]), "hdg": float(vals["SIM_OPOS_HDG"])}
+
+
+def instance_home(base: dict, g: int) -> dict:
+    """home_g = base + g x EAST_SPACING_M east.
+    IDENTICAL formula to UCezeriFleetSubsystem::ComputeInstanceHome — do not
+    change one without the other (docs/INVARIANTS.md)."""
+    cos_lat = max(math.cos(math.radians(base["lat"])), 1e-5)
+    return {"lat": base["lat"],
+            "lon": base["lon"] + (EAST_SPACING_M * g) / (OFFSET_M_PER_DEG * cos_lat),
+            "alt": base["alt"], "hdg": base["hdg"]}
+
+
+def home_str(home: dict) -> str:
+    return f"{home['lat']:.7f},{home['lon']:.7f},{home['alt']:.2f},{home['hdg']:.0f}"
+
+
+def resolve_type_vehicle(kind: str, override: str | None) -> Path:
+    """Resolve the vehicle config folder for a fleet vehicle type."""
+    if override:
+        name = override.strip()
+    elif kind == "drone":
+        name = (ACTIVE_DRONE_TXT.read_text(encoding="utf-8").strip()
+                if ACTIVE_DRONE_TXT.exists() else "sitl_copter")
+    else:
+        name = read_active_vehicle_name() or "sitl_ue"
+
+    vehicle_dir = VEHICLES_DIR / name
+    if not vehicle_dir.is_dir() or not (vehicle_dir / "params.parm").exists():
+        print(f"[ERROR] {kind} vehicle config not found/incomplete: {vehicle_dir}")
+        print("        Run `python start_sitl_docker.py --list` to see vehicles.")
+        sys.exit(1)
+
+    backend = read_backend(vehicle_dir)
+    if backend != "ue_physics":
+        print(f"[ERROR] Fleet mode requires backend=ue_physics, but {name} is {backend}.")
+        print("        Use the legacy single-vehicle mode for ap_native.")
+        sys.exit(1)
+    return vehicle_dir
+
+
+def write_instance_parm(vehicle_dir: Path, g: int, home: dict) -> Path:
+    """Copy the vehicle's params.parm to generated/uav<g>.parm with SIM_OPOS_*
+    rewritten to the instance home and the per-instance MAV_SYSID appended —
+    the parm stays the single source of truth inside each container."""
+    GENERATED_DIR.mkdir(exist_ok=True)
+    out_lines = []
+    replacements = {"SIM_OPOS_LAT": f"{home['lat']:.7f}",
+                    "SIM_OPOS_LNG": f"{home['lon']:.7f}",
+                    "SIM_OPOS_ALT": f"{home['alt']:.2f}"}
+    for line in (vehicle_dir / "params.parm").read_text(encoding="utf-8").splitlines():
+        parts = line.split("#", 1)[0].split()
+        if len(parts) >= 2 and parts[0] in replacements:
+            out_lines.append(f"{parts[0]:<15} {replacements[parts[0]]}")
+        else:
+            out_lines.append(line)
+    sysid = g + 1
+    out_lines += [
+        "",
+        f"# Fleet instance {g} — appended by start_sitl_docker.py",
+        f"MAV_SYSID       {sysid}",
+        f"SYSID_THISMAV   {sysid}   # pre-4.7 name; unknown-param warning is harmless",
+    ]
+    parm_path = GENERATED_DIR / f"uav{g}.parm"
+    parm_path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+    return parm_path
+
+
+def build_fleet_instances(drones: int, vtols: int,
+                          drone_vehicle: str | None,
+                          vtol_vehicle: str | None) -> list[dict]:
+    """Instances in global-index order: drones 0..N-1, then VTOLs N..N+M-1."""
+    drone_dir = resolve_type_vehicle("drone", drone_vehicle) if drones > 0 else None
+    vtol_dir  = resolve_type_vehicle("vtol",  vtol_vehicle)  if vtols  > 0 else None
+
+    # Base home priority mirrors UCezeriFleetSubsystem::EnsureBaseHome:
+    # the VTOL vehicle's SIM_OPOS when any VTOL flies, else the drone's.
+    base = (read_opos(vtol_dir) if vtol_dir else None) \
+        or (read_opos(drone_dir) if drone_dir else None)
+    if base is None:
+        print("[WARN] No SIM_OPOS_* in vehicle params — using legacy default home.")
+        base = {"lat": 41.0082000, "lon": 28.9784000, "alt": 0.0, "hdg": 0.0}
+
+    instances = []
+    for g in range(drones + vtols):
+        is_vtol = g >= drones
+        vdir    = vtol_dir if is_vtol else drone_dir
+        home    = instance_home(base, g)
+        instances.append({
+            "g": g,
+            "kind": "vtol" if is_vtol else "drone",
+            "type_index": (g - drones) if is_vtol else g,
+            "vehicle": vdir.name,
+            "binary": "arduplane" if is_vtol else "arducopter",
+            "home": home,
+            "parm": write_instance_parm(vdir, g, home),
+            "json_port":   JSON_PORT_BASE    + PORT_STRIDE * g,
+            "ap_in_port":  AP_JSON_IN_BASE   + PORT_STRIDE * g,
+            "servo_port":  SERVO_OUT_BASE    + PORT_STRIDE * g,
+            "mav_port":    MAVLINK_TCP_BASE  + PORT_STRIDE * g,
+            "mav2_port":   MAVLINK_TCP2_BASE + PORT_STRIDE * g,
+            "sysid": g + 1,
+        })
+    return instances
+
+
+def generate_fleet_compose(instances: list[dict], host_ipv4: str) -> None:
+    """Write generated/docker-compose.fleet.yml — one service per UAV.
+    Container-internal ports stay at the defaults (9003 JSON-in, 5760/5762
+    MAVLink); only the HOST side is offset by 10 per instance. The servo-out
+    port is dialled outward to the host, so it uses the real host port."""
+    lines = [
+        "# AUTO-GENERATED by start_sitl_docker.py --drones/--vtols — do not edit.",
+        "# Stop with: python start_sitl_docker.py --stop",
+        "services:",
+    ]
+    for ins in instances:
+        lines += [
+            f"  uav{ins['g']}:",
+            f"    image: cezeri-sitl:latest",
+            f"    container_name: cezeri_sitl_uav{ins['g']}_{ins['kind']}{ins['type_index']}",
+            f"    environment:",
+            f"      AP_BINARY: {ins['binary']}",
+            f"    command: >",
+            f"      --model JSON",
+            f"      --defaults /home/ardupilot/uav.parm",
+            f"      --sim-address={host_ipv4}",
+            f"      --sim-port-in=9003",
+            f"      --sim-port-out={ins['servo_port']}",
+            f"      --home={home_str(ins['home'])}",
+            f"      --serial0=tcp:5760",
+            f"      --serial1=tcp:5762",
+            f"      -I0",
+            f"    volumes:",
+            f"      - ./{ins['parm'].name}:/home/ardupilot/uav.parm:ro",
+            f"    ports:",
+            f"      - \"{ins['ap_in_port']}:9003/udp\"",
+            f"      - \"{ins['mav_port']}:5760/tcp\"",
+            f"      - \"{ins['mav2_port']}:5762/tcp\"",
+            f"    extra_hosts:",
+            f"      - \"host.docker.internal:host-gateway\"",
+            f"    restart: unless-stopped",
+            "",
+        ]
+    FLEET_COMPOSE.write_text("\n".join(lines), encoding="utf-8")
+
+
+def check_image_has_copter() -> None:
+    """Fleet drones need the arducopter binary — old images only built plane."""
+    r = subprocess.run(
+        ["docker", "run", "--rm", "--entrypoint", "test", "cezeri-sitl:latest",
+         "-x", "/home/ardupilot/ardupilot/build/sitl/bin/arducopter"],
+        capture_output=True)
+    if r.returncode != 0:
+        print("[ERROR] The cezeri-sitl image has no arducopter binary.")
+        print("        Rebuild once:  python start_sitl_docker.py --build")
+        sys.exit(1)
+
+
+def kill_stale_relays() -> None:
+    """Kill any servo_relay.py left over from a previous run. Stale relays keep
+    their UDP ports bound (SO_REUSEADDR makes the double-bind silent) and eat
+    servo packets — the classic 'works sometimes' link."""
+    ps = ("Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | "
+          "Where-Object { $_.CommandLine -match 'servo_relay\\.py' } | "
+          "ForEach-Object { Stop-Process -Id $_.ProcessId -Force; $_.ProcessId }")
+    try:
+        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                           capture_output=True, text=True, timeout=30)
+        killed = [p for p in r.stdout.split() if p.strip().isdigit()]
+        if killed:
+            print(f"[info] Killed stale servo relay pid(s): {', '.join(killed)}")
+    except Exception as e:
+        print(f"[WARN] Stale-relay cleanup failed ({e}) — continuing.")
+
+
+def start_servo_relay_for(listen: int, dest: int) -> subprocess.Popen | None:
+    """Launch one servo_relay.py instance (detached, silent — see the legacy
+    start_servo_relay for why stdout/stderr MUST be DEVNULL)."""
+    relay = SCRIPTS_DIR / "control" / "servo_relay.py"
+    if not relay.exists():
+        print(f"[WARN] servo_relay.py not found at {relay}; servo packets won't reach UE.")
+        return None
+    try:
+        flags = 0
+        if sys.platform == "win32":
+            flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        proc = subprocess.Popen(
+            [sys.executable, str(relay), "--listen", str(listen), "--dest", str(dest)],
+            cwd=SCRIPTS_DIR,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            creationflags=flags)
+        print(f"  Servo relay       : pid {proc.pid}  port {listen} -> 127.0.0.1:{dest}")
+        return proc
+    except OSError as e:
+        print(f"[WARN] Could not start servo_relay.py ({listen}->{dest}): {e}")
+        return None
+
+
+def print_fleet_summary(instances: list[dict]) -> None:
+    print()
+    print("Fleet connection strings (also shown on-screen in UE):")
+    for ins in instances:
+        cam_note = ""
+        print(f"  {ins['kind'].upper():<5} {ins['type_index'] + 1}  "
+              f"[{ins['vehicle']}]  "
+              f"MAVLink tcp:127.0.0.1:{ins['mav_port']}  SYSID {ins['sysid']}  "
+              f"JSON udp {ins['json_port']}{cam_note}")
+    print()
+    print("Camera streams (when enabled in the UE init menu):")
+    print(f"  UAV g camera k -> udp 127.0.0.1:{5001}+10*g+k "
+          f"(e.g. first drone cam 0 = 5001)")
+
+
+def cmd_fleet_start(drones: int, vtols: int, drone_vehicle: str | None,
+                    vtol_vehicle: str | None, rebuild: bool, dry_run: bool) -> None:
+    if not dry_run:
+        check_docker()
+    if rebuild:
+        cmd_build()
+
+    instances = build_fleet_instances(drones, vtols, drone_vehicle, vtol_vehicle)
+    host_ipv4 = resolve_host_ipv4() if not dry_run else "192.168.65.254"
+    generate_fleet_compose(instances, host_ipv4)
+
+    print()
+    print(f"Fleet: {drones} drone(s) [ArduCopter] + {vtols} VTOL(s) [ArduPlane]")
+    print(f"  Compose file      : {FLEET_COMPOSE}")
+    for ins in instances:
+        print(f"  uav{ins['g']} ({ins['kind']} {ins['type_index'] + 1}, {ins['vehicle']}): "
+              f"home {home_str(ins['home'])}")
+
+    if dry_run:
+        print_fleet_summary(instances)
+        print("\n[dry-run] Files generated; containers NOT started.")
+        return
+
+    if drones > 0:
+        check_image_has_copter()
+
+    kill_stale_relays()
+    relays: list[subprocess.Popen | None] = []
+    for ins in instances:
+        relays.append(start_servo_relay_for(ins["servo_port"], ins["json_port"]))
+
+    print_fleet_summary(instances)
+    print("Press Ctrl+C to stop.\n")
+
+    compose = ["docker", "compose", "-p", FLEET_PROJECT, "-f", str(FLEET_COMPOSE)]
+    up_started = time.monotonic()
+    try:
+        run(compose + ["up"], check=True)
+    except KeyboardInterrupt:
+        print("\nStopping fleet...")
+        run(compose + ["down", "--remove-orphans"])
+    except subprocess.CalledProcessError as e:
+        # `compose up` returns non-zero when the fleet is taken down externally
+        # (--stop from the UE menus); that must exit 0 or the `|| pause` guard
+        # in the console launcher keeps this window open forever. A failure
+        # within seconds of starting is a real startup error — keep it loud.
+        if time.monotonic() - up_started < 15:
+            raise
+        print(f"\nFleet stopped externally (compose up exited with {e.returncode}).")
+    finally:
+        for proc in relays:
+            if proc and proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+
+
+def docker_env_for_backend(backend: str, vehicle_dir: Path) -> dict:
     """Build the env dict passed to `docker compose up` based on backend."""
     env = os.environ.copy()
+    env["AP_HOME"] = read_vehicle_home(vehicle_dir)
     if backend == "ap_native":
         env["AP_MODEL"] = "quadplane"
         env["AP_EXTRA_ARGS"] = ""   # no --sim-address: AP uses internal physics, no external server
@@ -159,11 +511,7 @@ def resolve_vehicle(override: str | None) -> Path:
 
 def prepare_vehicle_parm(vehicle_dir: Path) -> None:
     src = vehicle_dir / "params.parm"
-    # vehicle.parm is volume-mounted into the Linux container; write it with LF
-    # endings so a CRLF checkout (git core.autocrlf=true) can't leak \r into
-    # ArduPilot's parameter parser.
-    text = src.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
-    VEHICLE_PARM.write_text(text, encoding="utf-8", newline="\n")
+    shutil.copy2(src, VEHICLE_PARM)
     print(f"[OK] Vehicle: {vehicle_dir.name}")
     print(f"     Params:  {src} -> {VEHICLE_PARM}")
 
@@ -237,7 +585,7 @@ def cmd_start(rebuild: bool, vehicle_override: str | None) -> None:
     prepare_vehicle_parm(vehicle_dir)
 
     backend = read_backend(vehicle_dir)
-    env = docker_env_for_backend(backend)
+    env = docker_env_for_backend(backend, vehicle_dir)
 
     if rebuild:
         cmd_build()
@@ -251,6 +599,7 @@ def cmd_start(rebuild: bool, vehicle_override: str | None) -> None:
     else:
         print(f"  Physics           : UE UVTOLPhysicsComponent via JSON udp/9003")
     print(f"  MAVLink out port  : 5760/tcp")
+    print(f"  Home (--home)     : {env['AP_HOME']}  (from vehicle SIM_OPOS_*)")
 
     # Launch background helpers based on backend mode.
     vis_proc: subprocess.Popen | None = None
@@ -259,6 +608,7 @@ def cmd_start(rebuild: bool, vehicle_override: str | None) -> None:
     if backend == "ap_native":
         vis_proc = start_visualizer_bridge()
     else:  # ue_physics
+        kill_stale_relays()   # a leftover fleet relay on 9006 would double-bind
         relay_proc = start_servo_relay()
 
     print()
@@ -284,9 +634,15 @@ def cmd_start(rebuild: bool, vehicle_override: str | None) -> None:
 
 def cmd_stop() -> None:
     check_docker()
-    print("Stopping SITL container...")
-    run(["docker", "compose", "down"], check=True)
-    print("[OK] Container stopped.")
+    print("Stopping SITL container(s)...")
+    # Legacy single-vehicle compose project
+    run(["docker", "compose", "down"], check=False)
+    # Fleet compose project (if a fleet was ever generated)
+    if FLEET_COMPOSE.exists():
+        run(["docker", "compose", "-p", FLEET_PROJECT, "-f", str(FLEET_COMPOSE),
+             "down", "--remove-orphans"], check=False)
+    kill_stale_relays()
+    print("[OK] Containers stopped.")
 
 
 def cmd_logs() -> None:
@@ -297,9 +653,19 @@ def cmd_logs() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="CezeriSim Docker SITL launcher")
     parser.add_argument("--vehicle", metavar="NAME",
-                        help="Override active vehicle (folder name under Vehicles/)")
+                        help="Override active vehicle (folder name under Vehicles/, legacy mode)")
+    parser.add_argument("--drones", type=int, default=None, metavar="N",
+                        help="Fleet mode: number of quadrotor drones (ArduCopter)")
+    parser.add_argument("--vtols", type=int, default=None, metavar="M",
+                        help="Fleet mode: number of VTOL QuadPlanes (ArduPlane)")
+    parser.add_argument("--drone-vehicle", metavar="NAME",
+                        help="Drone vehicle config (default: Vehicles/active_drone_vehicle.txt)")
+    parser.add_argument("--vtol-vehicle", metavar="NAME",
+                        help="VTOL vehicle config (default: Vehicles/active_vehicle.txt)")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Fleet mode: generate parms + compose file, don't start")
     parser.add_argument("--build",  action="store_true", help="Rebuild image before starting")
-    parser.add_argument("--stop",   action="store_true", help="Stop the running container")
+    parser.add_argument("--stop",   action="store_true", help="Stop containers and relays")
     parser.add_argument("--logs",   action="store_true", help="Tail container logs")
     parser.add_argument("--list",   action="store_true", help="List available vehicle configs")
     args = parser.parse_args()
@@ -310,6 +676,15 @@ def main() -> None:
         cmd_stop()
     elif args.logs:
         cmd_logs()
+    elif args.drones is not None or args.vtols is not None:
+        drones = max(args.drones or 0, 0)
+        vtols  = max(args.vtols or 0, 0)
+        if drones + vtols == 0:
+            print("[ERROR] Fleet mode needs at least one vehicle "
+                  "(--drones N and/or --vtols M).")
+            sys.exit(1)
+        cmd_fleet_start(drones, vtols, args.drone_vehicle, args.vtol_vehicle,
+                        rebuild=args.build, dry_run=args.dry_run)
     else:
         cmd_start(rebuild=args.build, vehicle_override=args.vehicle)
 
