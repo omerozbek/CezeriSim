@@ -1,0 +1,26 @@
+{
+	"sensorPreset": "RPiHQ",
+	"sensorWidthMM": 6.2870001792907715,
+	"sensorHeightMM": 4.7119998931884766,
+	"resolutionX": 1014,
+	"resolutionY": 760,
+	"focalLengthMM": 6,
+	"apertureFStop": 1.2000000476837158,
+	"focusDistanceM": 20,
+	"exposureMode": "Auto",
+	"iSO": 100,
+	"shutterDenominator": 60,
+	"whiteBalanceK": 6500,
+	"bIsoNoiseGrain": true,
+	"jpegQuality": 60,
+	"streamFPS": 30,
+	"_derived":
+	{
+		"horizontal_fov_deg": 55.301586151123047,
+		"vertical_fov_deg": 42.876560211181641,
+		"fx_px": 967.71112239515287,
+		"fy_px": 967.74195742062659,
+		"cx_px": 507,
+		"cy_px": 380
+	}
+}
