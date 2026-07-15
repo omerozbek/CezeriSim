@@ -23,9 +23,23 @@ SIM_RATE_HZ     1000
 SIM_SPEEDUP     5
 BARO_FIELD_ELV  10
 
+# Same SITL adaptation as every shipped VTOL vehicle: the simulated GPS
+# driver reports "not healthy" under the JSON lockstep, which would block
+# arming forever. Real vehicles keep full arming checks.
+ARMING_CHECK    0
+
+# SITL traps floating-point exceptions and aborts the whole process on any
+# transient divide-by-zero (observed mid-climb under the JSON backend).
+# Real flight controllers do not trap FPEs; disable the trap here too.
+SIM_FLOAT_EXCEPT 0
+
 SIM_OPOS_LAT    41.1008290
 SIM_OPOS_LNG    28.5516954
-SIM_OPOS_ALT    0.0
+# Nonzero: with home at exactly 0 m MSL the baro field-elevation auto-set
+# never latches (origin.alt stays 0) and ArduPilot resets the EKF height
+# datum every second while disarmed — visible as the 1 Hz "Field Elevation
+# Set: 0m" spam plus height/velocity variance that blocks arming.
+SIM_OPOS_ALT    10.0
 SIM_OPOS_HDG    0
 
 # Motor model — must stay consistent with electrical.json k_thrust derivation:

@@ -1,11 +1,22 @@
 {
     "_about": "Generic 1.5 kg quadrotor powertrain. k_thrust derived through AP's full output path (see docs/ARCHITECTURE.md kThrust formula) from MOT_THST_HOVER 0.35, MOT_THST_EXPO 0.65, SPIN 0.15-0.95: u_hover=0.56, kT=(1.5*9.81/4)/0.56^2 = 11.73 N. TWR at full demand ~2.6:1.",
-
-    "pwm_min":    1000,
-    "pwm_max":    2000,
-
-    "k_thrust":   11.73,
-    "k_torque":   0.25,
-
-    "drag_coeff": 0.25
+    "pwm_min": 1000,
+    "pwm_max": 2000,
+    "k_thrust": 11.73,
+    "k_torque": 0.25,
+    "drag_coeff": 0.25,
+    "motor_time_constant_s": 0.03,
+    "rotational_damping": 0,
+    "battery_cells_s": 4,
+    "battery_capacity_mah": 5200,
+    "battery_voltage_full_v": 16.799999,
+    "battery_voltage_nominal_v": 14.8,
+    "battery_internal_resistance_ohm": 0.012,
+    "hover_current_a": 14,
+    "motor_kv": 880,
+    "motor_max_current_a": 18,
+    "esc_max_current_a": 25,
+    "prop_diameter_in": 10,
+    "prop_pitch_in": 4.5,
+    "prop_blade_count": 2
 }

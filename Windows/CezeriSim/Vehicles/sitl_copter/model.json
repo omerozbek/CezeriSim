@@ -1,5 +1,6 @@
 {
     "display_name": "SITL Copter (generic)",
     "type": "drone",
-    "protected": false
+    "protected": false,
+    "color": "red"
 }
