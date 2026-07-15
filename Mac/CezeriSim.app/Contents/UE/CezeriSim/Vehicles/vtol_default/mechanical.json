@@ -1,0 +1,79 @@
+{
+    "_about": "PROTECTED default VTOL model — snapshot of gokce_flight16 (the active VTOL when the Models system was added). The Models menu refuses to edit or delete it; duplicate it to make an editable model.",
+
+    "backend": "ue_physics",
+    "_backend_doc": "ue_physics = ArduPilot runs --model JSON and gets physics from UE's UVTOLPhysicsComponent using the mass/inertia/aero values below. Use this for simulating real vehicles with measured data. ap_native = ArduPilot's built-in QuadPlane model; ignores mechanical/electrical fields.",
+
+    "_doc": {
+        "mass_kg":                    "Total vehicle mass in kg — with full batteries, no payload. Used for F=ma and hover thrust calibration.",
+        "inertia_roll_kg_m2":         "Moment of inertia around the roll axis (X, wing-to-wing), in kg·m². Larger = slower roll response.",
+        "inertia_pitch_kg_m2":        "Moment of inertia around the pitch axis (Y, nose-to-tail), in kg·m². Larger = slower pitch response.",
+        "inertia_yaw_kg_m2":          "Moment of inertia around the yaw axis (Z, vertical), in kg·m². Usually the largest of the three for a VTOL with wide wingspan.",
+        "arm_length_m":               "Distance from the vehicle centre to each lift motor, in metres. For a quad: half the motor-to-motor diagonal.",
+        "collision_radius_m":         "Bounding-sphere radius used for inter-vehicle collision momentum exchange, metres.",
+        "cg_offset_x_m":              "Centre-of-gravity offset from the geometric centre along body X (forward positive), metres. STORED for the future CG-shift model — not yet consumed by the physics.",
+        "cg_offset_y_m":              "CG offset along body Y (right positive), metres. Stored for future use.",
+        "cg_offset_z_m":              "CG offset along body Z (down positive), metres. Stored for future use.",
+        "wingspan_m":                 "Wing tip-to-tip span in metres. Documentation/derivation value (AR = span²/area); the aero model uses wing_area_m2 + aspect_ratio.",
+        "wing_area_m2":               "Total wing reference area in m². Used in all aerodynamic force calculations: L = 0.5 * rho * V^2 * S * CL.",
+        "aspect_ratio":               "Wing aspect ratio: span^2 / wing_area. Higher AR = more efficient wing (less induced drag).",
+        "oswald_e":                   "Oswald efficiency factor (0–1). 0.8 is typical for a clean UAV wing.",
+        "mac_m":                      "Mean Aerodynamic Chord in metres — effective average chord length used in pitch moment calculations.",
+        "cl0":                        "Lift coefficient at zero angle of attack. Positive for cambered airfoils.",
+        "cl_alpha":                   "Lift curve slope in 1/radian (dCL/dAlpha). Finite-wing value ≈ 2*pi / (1 + 2/AR).",
+        "cd0":                        "Zero-lift (parasite) drag coefficient — EFFECTIVE value, calibrated 2026-07-02 so closed-loop AUTO cruise settles at the real ~24 m/s. Also absorbs pusher-prop thrust decay with airspeed.",
+        "cy_beta":                    "Side-force derivative dCY/dBeta in 1/radian. Negative for a stable aircraft.",
+        "cm_aileron":                 "Roll moment coefficient per radian of aileron deflection.",
+        "cm_elevator":                "Pitch moment coefficient per radian of elevator deflection. Negative = trailing-edge-down elevator → nose-up moment.",
+        "cm_rudder":                  "Yaw moment coefficient per radian of rudder deflection.",
+        "cm_alpha":                   "Static pitch stiffness dCm/dAlpha in 1/radian. MUST be negative (statically stable) — without it the autopilot pitch loop diverges.",
+        "cm_q":                       "Pitch rate damping dCm/dq̂ per radian. Negative. Typical: -8 to -25.",
+        "cl_p":                       "Roll rate damping dCl/dp̂ per radian. Negative. Typical: -0.4 to -0.6.",
+        "cn_r":                       "Yaw rate damping dCn/dr̂ per radian. Negative. Typical: -0.1 to -0.2.",
+        "cn_beta":                    "Weathervane stability dCn/dBeta in 1/radian. Positive = nose turns into the relative wind.",
+        "stall_aoa_deg":              "Angle of attack at which the wing stalls, in degrees.",
+        "min_airspeed_ms":            "Airspeed below which all aerodynamic forces are suppressed (m/s) — hover regime.",
+        "max_control_deflection_deg": "Maximum control surface deflection angle in degrees (aileron, elevator, rudder).",
+        "gravity_ms2":                "Gravitational acceleration in m/s².",
+        "air_density":                "Air density in kg/m³. 1.225 at sea level, 15°C."
+    },
+
+    "mass_kg":             10.0,
+    "inertia_roll_kg_m2":   1.4,
+    "inertia_pitch_kg_m2":  1.3,
+    "inertia_yaw_kg_m2":    2.6,
+
+    "arm_length_m":         0.7182,
+    "collision_radius_m":   1.0,
+    "cg_offset_x_m":        0.0,
+    "cg_offset_y_m":        0.0,
+    "cg_offset_z_m":        0.0,
+
+    "wingspan_m":           1.88,
+    "wing_area_m2":         0.64,
+    "aspect_ratio":         5.52,
+    "oswald_e":             0.8,
+    "mac_m":                0.346,
+
+    "cl0":                  0.30,
+    "cl_alpha":             4.5,
+    "cd0":                  0.070,
+    "cy_beta":             -0.3,
+
+    "cm_aileron":           0.30,
+    "cm_elevator":         -0.8,
+    "cm_rudder":            0.10,
+
+    "cm_alpha":            -0.7,
+    "cm_q":               -12.0,
+    "cl_p":                -0.5,
+    "cn_r":                -0.15,
+    "cn_beta":              0.08,
+
+    "stall_aoa_deg":        12.0,
+    "min_airspeed_ms":       8.0,
+    "max_control_deflection_deg": 20.0,
+
+    "gravity_ms2":          9.81,
+    "air_density":          1.225
+}

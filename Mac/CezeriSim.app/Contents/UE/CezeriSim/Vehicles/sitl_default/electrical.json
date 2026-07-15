@@ -1,0 +1,27 @@
+{
+    "_about": "Motor and power configuration for the sitl_default test vehicle (3 kg generic QuadPlane). Tuned to match the canonical ArduPilot SITL QuadPlane plant the official quadplane.parm PIDs target: minimal motor lag, no artificial rotational damping (the closed-loop rate-PID + small Ixx provides natural damping).",
+
+    "_doc": {
+        "pwm_min":               "Minimum PWM signal sent to motors in microseconds. Matches Q_M_PWM_MIN in params.parm (1000). ArduPilot SITL default.",
+        "pwm_max":               "Maximum PWM signal sent to motors in microseconds. Matches Q_M_PWM_MAX in params.parm (2000). ArduPilot SITL default.",
+
+        "k_thrust":              "Lift motor thrust coefficient in Newtons. T = k_thrust * throttle^2. Derived: k_thrust = (mass_kg * 9.81 / 4) / Q_M_THST_HOVER^2 = (3 * 9.81 / 4) / 0.35^2 = 7.3575 / 0.1225 = 60.1 N. This ensures the vehicle hovers at exactly Q_M_THST_HOVER=0.35 throttle, which is ArduPilot's default hover point.",
+        "k_torque":              "Lift motor reaction torque coefficient in N·m. Q = k_torque * throttle^2. Used for yaw control via CW/CCW motor imbalance. Conservative value — increase if yaw authority is too weak.",
+        "k_thrust_pusher":       "Pusher motor thrust coefficient in Newtons. Provides forward thrust for fixed-wing cruise. 8 N at full throttle is sufficient for a 3 kg vehicle to maintain level flight above stall speed.",
+
+        "motor_time_constant_s": "First-order lag time constant for motor thrust, in seconds. 0.05 s is realistic for small brushless motors and prevents instant step torques at liftoff (which would otherwise drive AP's rate-I integrator to saturation in one tick).",
+        "rotational_damping":    "Rotational damping coefficient in N·m/(rad/s). 1.5 adds damping that real multirotors get from rotor-disk asymmetry and body aero at hover — without it, the angle→rate cascade with real PIDs becomes two stacked integrators and oscillates.",
+        "drag_coeff":            "Linear body drag coefficient in N/(m/s). Opposes translational velocity. Modest value for a small VTOL airframe in low-speed regime."
+    },
+
+    "pwm_min":             1000,
+    "pwm_max":             2000,
+
+    "k_thrust":            60.1,
+    "k_torque":             0.5,
+    "k_thrust_pusher":      8.0,
+
+    "motor_time_constant_s": 0.03,
+    "rotational_damping":    3.0,
+    "drag_coeff":            0.15
+}

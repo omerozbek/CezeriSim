@@ -1,0 +1,71 @@
+{
+    "_about": "PROTECTED default VTOL powertrain — snapshot of gokce_flight16. Battery/motor/prop fields marked 'stored' are catalogue placeholders for the future power model (not yet consumed by the physics) — replace with test-stand data when available.",
+
+    "_doc": {
+        "pwm_min":               "Minimum PWM signal sent to motors in microseconds. Must match Q_M_PWM_MIN in params.parm.",
+        "pwm_max":               "Maximum PWM signal sent to motors in microseconds. Must match Q_M_PWM_MAX in params.parm.",
+        "k_thrust":              "Lift motor thrust coefficient in Newtons: T = k_thrust * throttle². Derive through AP's FULL output path (expo + spin window) from Q_M_THST_HOVER — see docs/ARCHITECTURE.md.",
+        "k_torque":              "Lift motor reaction torque coefficient: Q = k_torque * throttle². Sets yaw authority in hover.",
+        "k_thrust_pusher":       "Pusher motor thrust coefficient in Newtons: T = k_thrust_pusher * throttle². Static-thrust value; no prop-unloading model yet.",
+        "motor_time_constant_s": "First-order lag time constant for motor thrust response, seconds. Real brushless motors take 30–50 ms to slew thrust.",
+        "rotational_damping":    "Rotational damping coefficient in N·m/(rad/s), all three axes. Hover PIDs rely on it.",
+        "drag_coeff":            "Hover heave (rotor-inflow) damping, BODY Z ONLY, N/(m/s), faded out over the hover_drag_fade band.",
+        "drag_coeff_hover_xy":   "Mild hover translational damping on body X/Y, N/(m/s), faded with the same band.",
+        "drag_coeff_forward":    "Always-on isotropic parasite residual drag, N/(m/s); wing CD0 covers the rest above stall.",
+        "hover_drag_fade_lo_ms": "Airspeed (m/s) below which the full hover drag coefficients apply.",
+        "hover_drag_fade_hi_ms": "Airspeed (m/s) above which only drag_coeff_forward remains.",
+        "servo_speed_deg_s":     "Control-surface servo slew rate, deg/s. STORED for the future servo-lag model — not yet consumed.",
+        "battery_cells_s":       "Battery cell count in series (S). Stored for the future battery/endurance model.",
+        "battery_capacity_mah":  "Battery capacity in mAh. Stored — placeholder estimate, not measured.",
+        "battery_voltage_full_v":    "Fully charged pack voltage (4.2 V/cell). Stored.",
+        "battery_voltage_nominal_v": "Nominal pack voltage (3.7 V/cell). Stored.",
+        "battery_internal_resistance_ohm": "Total pack internal resistance in ohms (sag model). Stored.",
+        "hover_current_a":       "Total current draw in steady hover, A. Stored — fill from logs/test stand.",
+        "motor_kv":              "Lift motor KV rating (RPM/V). T-Motor P60 KV170. Stored.",
+        "motor_max_current_a":   "Lift motor maximum continuous current, A. Stored.",
+        "esc_max_current_a":     "Lift ESC continuous current rating, A. Stored.",
+        "prop_diameter_in":      "Lift propeller diameter in inches (Falcon CF 22x6.6). Stored.",
+        "prop_pitch_in":         "Lift propeller pitch in inches. Stored.",
+        "pusher_motor_kv":       "Pusher motor KV rating (T-Motor AT5220-A 25KV class). Stored.",
+        "pusher_prop_diameter_in": "Pusher propeller diameter, inches. Stored — fill from the MISSING_ELECTRICAL_DATA request.",
+        "pusher_prop_pitch_in":  "Pusher propeller pitch, inches. Stored."
+    },
+
+    "pwm_min":              1000,
+    "pwm_max":              2000,
+
+    "k_thrust":             78.49,
+    "_k_thrust_doc": "Derived through AP's full output path with the REAL 22-may Q_M_THST_HOVER 0.3488028: a=0.5112 (expo 0.65) -> u=0.15+0.8a=0.5590 -> kT=(10*9.81/4)/0.5590²=78.49 N. TWR at full demand 2.89:1.",
+    "k_torque":               2.0,
+    "_k_torque_doc": "Physical estimate for Falcon CF 22x6.6: Q/T ≈ 0.025 m -> k_torque = 78.49 × 0.025 ≈ 2.0. Replace with test-stand torque data when available.",
+    "k_thrust_pusher":       73.7,
+    "_k_thrust_pusher_doc": "AT5220-A datasheet max thrust 7516 g = 73.7 N at full throttle. Static-thrust coefficient; no prop-unloading model.",
+
+    "motor_time_constant_s":  0.05,
+    "rotational_damping":     1.5,
+
+    "drag_coeff":             8.0,
+    "drag_coeff_hover_xy":    2.0,
+    "drag_coeff_forward":     0.20,
+    "hover_drag_fade_lo_ms":  6.0,
+    "hover_drag_fade_hi_ms": 12.0,
+
+    "servo_speed_deg_s":    300.0,
+
+    "battery_cells_s":         12,
+    "battery_capacity_mah":  8000,
+    "battery_voltage_full_v":  50.4,
+    "battery_voltage_nominal_v": 44.4,
+    "battery_internal_resistance_ohm": 0.024,
+    "hover_current_a":       45.0,
+
+    "motor_kv":             170,
+    "motor_max_current_a":   40.0,
+    "esc_max_current_a":     60.0,
+    "prop_diameter_in":      22.0,
+    "prop_pitch_in":          6.6,
+
+    "pusher_motor_kv":       25,
+    "pusher_prop_diameter_in": 20.0,
+    "pusher_prop_pitch_in":   10.0
+}

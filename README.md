@@ -5,6 +5,28 @@ CezeriSim is a packaged Unreal Engine 5 VTOL drone simulator. The 3D world and
 the flight controller — ArduPlane SITL — runs inside a Docker container and
 talks to the sim over UDP/MAVLink.
 
+## Quick start: clone only your OS (sparse checkout)
+
+Each platform ships as its own ~600 MB build (`Windows/`, `Mac/`, and `Linux/`
+where present), and a plain `git clone` pulls **all** of them. Instead, sparse
+checkout grabs only your platform's folder (plus top-level files like this
+README). With **Git + Git LFS installed** (run `git lfs install` once per
+machine), pick your OS and run:
+
+```bash
+# Choose ONE platform and use the SAME name in both marked lines:
+#   Windows  |  Mac  |  Linux
+git clone --filter=blob:none --no-checkout https://github.com/omerozbek/CezeriSim.git
+cd CezeriSim
+git sparse-checkout set Windows            # <-- your OS
+git config lfs.fetchinclude "Windows/**"   # <-- same OS
+git checkout main
+```
+
+Only your platform's LFS binaries are downloaded, now and on every future
+`git pull`. To add another platform later, verify the download, or read what
+each flag does, see [Getting the repository](#getting-the-repository) below.
+
 ## Repository layout
 
 ```

@@ -1,0 +1,65 @@
+{
+    "_about": "Generic 3 kg QuadPlane test vehicle. With backend='ap_native', ArduPilot uses its own built-in QuadPlane physics (the same plant that the official quadplane.parm PIDs were tuned against) — guaranteed stable hover, no UE physics in the loop. The mechanical/electrical fields below are ignored in ap_native mode but kept for documentation and potential future switch back to ue_physics.",
+
+    "backend": "ap_native",
+    "_backend_doc": "ap_native = ArduPilot runs its own built-in physics (--model quadplane), UE is a pure visualizer. PIDs work first-try because the plant matches official tuning. Use this for control-algorithm development and pymavlink testing. ue_physics = ArduPilot runs --model JSON and gets physics from UE's UVTOLPhysicsComponent. Use this when simulating a specific real vehicle with measured mass/aero (gokce, pasifik, etc.).",
+
+
+    "_sources": {
+        "SIM_Plane.h":  "Wing area, span, chord, CL0, CLalpha, CD0, Oswald e, stall AoA — verbatim from ArduPilot SITL default coefficients struct",
+        "SIM_Frame.h":  "Default frame mass = 3.0 kg (Model struct default). QuadPlane adds ~50% for VTOL hardware → 3.0 kg total kept as a round number.",
+        "quadplane.parm": "Official ArduPilot Tools/autotest/default_params/quadplane.parm — PIDs and limits in params.parm are taken verbatim from here"
+    },
+
+    "_doc": {
+        "mass_kg":                    "Total vehicle mass in kg — with full batteries, no payload. Used for F=ma and hover thrust calibration.",
+        "inertia_roll_kg_m2":         "Moment of inertia around the roll axis (X, wing-to-wing), in kg·m². Larger = slower roll response.",
+        "inertia_pitch_kg_m2":        "Moment of inertia around the pitch axis (Y, nose-to-tail), in kg·m². Larger = slower pitch response.",
+        "inertia_yaw_kg_m2":          "Moment of inertia around the yaw axis (Z, vertical), in kg·m². Usually the largest for a VTOL with wide wingspan.",
+        "arm_length_m":               "Distance from vehicle centre to each lift motor, in metres. For a quad: half the motor-to-motor diagonal.",
+        "wing_area_m2":               "Total wing reference area in m². ArduPilot SITL default: 0.45 m² (SIM_Plane.h: s = 0.45).",
+        "aspect_ratio":               "Wing aspect ratio = span² / wing_area = 1.88² / 0.45 = 7.85. From ArduPilot SITL: b=1.88, c=0.24.",
+        "oswald_e":                   "Oswald efficiency factor (0–1). ArduPilot SITL default: 0.9 (SIM_Plane.h: oswald = 0.9).",
+        "mac_m":                      "Mean Aerodynamic Chord in metres. ArduPilot SITL default: 0.24 m (SIM_Plane.h: c = 0.24).",
+        "cl0":                        "Lift coefficient at zero angle of attack. ArduPilot SITL default: 0.56 (SIM_Plane.h: c_lift_0 = 0.56). Positive because the SITL model uses a cambered wing.",
+        "cl_alpha":                   "Lift curve slope in 1/radian. ArduPilot SITL default: 6.9 (SIM_Plane.h: c_lift_a = 6.9). Slightly above the 2π theoretical because the SITL model includes camber effects.",
+        "cd0":                        "Zero-lift (parasite) drag coefficient. ArduPilot SITL default: 0.1 (SIM_Plane.h: c_drag_p = 0.1).",
+        "cy_beta":                    "Side-force derivative dCY/dBeta in 1/radian. Negative = sideslip produces restoring force. Typical: -0.3.",
+        "cm_aileron":                 "Roll moment coefficient per radian of aileron deflection. Conservative value for a small test vehicle.",
+        "cm_elevator":                "Pitch moment coefficient per radian of elevator deflection. Negative = trailing-edge-down → nose-up.",
+        "cm_rudder":                  "Yaw moment coefficient per radian of rudder deflection.",
+        "stall_aoa_deg":              "Stall angle of attack in degrees. ArduPilot SITL default: 27° (SIM_Plane.h: alpha_stall = 0.4712 rad). The SITL model is permissive — high stall angle keeps the aero stable across wide AoA range.",
+        "min_airspeed_ms":            "Airspeed below which all aerodynamic forces are suppressed (m/s). Hover and low-speed VTOL operations are below this threshold.",
+        "max_control_deflection_deg": "Maximum control surface deflection angle in degrees. PWM 1000/2000 maps to ±this angle.",
+        "gravity_ms2":                "Gravitational acceleration in m/s². 9.81 at sea level.",
+        "air_density":                "Air density in kg/m³. 1.225 at sea level, 15°C."
+    },
+
+    "mass_kg":             3.0,
+    "inertia_roll_kg_m2":  1.4,
+    "inertia_pitch_kg_m2": 1.4,
+    "inertia_yaw_kg_m2":   2.5,
+
+    "arm_length_m":        0.30,
+
+    "wing_area_m2":        0.45,
+    "aspect_ratio":        7.85,
+    "oswald_e":            0.9,
+    "mac_m":               0.24,
+
+    "cl0":                 0.56,
+    "cl_alpha":            6.9,
+    "cd0":                 0.10,
+    "cy_beta":            -0.3,
+
+    "cm_aileron":          0.20,
+    "cm_elevator":        -0.50,
+    "cm_rudder":           0.08,
+
+    "stall_aoa_deg":       27.0,
+    "min_airspeed_ms":      8.0,
+    "max_control_deflection_deg": 20.0,
+
+    "gravity_ms2":         9.81,
+    "air_density":         1.225
+}

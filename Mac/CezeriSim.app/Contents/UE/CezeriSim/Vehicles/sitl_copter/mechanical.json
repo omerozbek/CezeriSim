@@ -1,0 +1,18 @@
+{
+    "_about": "Generic 1.5 kg quadrotor for multi-drone simulation — ue_physics backend, ArduCopter SITL. Plant runs in UDronePhysicsComponent (no fixed-wing fields).",
+    "backend": "ue_physics",
+    "mass_kg": 1.5,
+    "inertia_roll_kg_m2": 0.025,
+    "inertia_pitch_kg_m2": 0.025,
+    "inertia_yaw_kg_m2": 0.045,
+    "arm_length_m": 0.23,
+    "gravity_ms2": 9.81,
+    "battery_mass_kg": 0,
+    "motor_rect_width_m": 0,
+    "motor_rect_length_m": 0,
+    "collision_radius_m": 0.35,
+    "cg_offset_x_m": 0,
+    "cg_offset_y_m": 0,
+    "cg_offset_z_m": 0,
+    "air_density": 1.225
+}

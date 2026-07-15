@@ -1,0 +1,28 @@
+{
+    "_about": "Motor/power config for sitl_ue (3 kg ue_physics GOLDEN REFERENCE). kThrust calibrated through ArduPilot's FULL output path for Q_M_THST_HOVER=0.40 and TWR=2.5:1. Validated offline by Scripts/control/offline_tune.py (exact StepPhysics replica + AP-style cascade).",
+
+    "pwm_min":             1000,
+    "pwm_max":             2000,
+
+    "k_thrust":            20.57,
+    "_k_thrust_derivation": "Derived through AP's full output path, NOT the naive (m*g/4)/THST_HOVER^2 (that formula ignores Q_M_THST_EXPO and Q_M_SPIN_MIN/MAX and gave kThrust=60.1 -> TWR 7:1 -> vertical-loop runaway, the takeoff-flip root cause). Path: thrust demand t=0.40 -> expo 0.65 linearization a=((e-1)+sqrt((1-e)^2+4et))/(2e)=0.560 -> u=SPIN_MIN+(SPIN_MAX-SPIN_MIN)*a=0.15+0.8*0.560=0.598 (PWM 1598) -> kThrust=(3*9.81/4)/0.598^2=20.57 N. Max thrust 4*20.57*0.95^2=74.2 N -> TWR 2.52. Bonus: with expo=0.65 the composite AP-demand->UE-thrust curve is linear to <1%, so AP's linear-thrust assumption holds.",
+    "k_torque":             1.0,
+    "_k_torque_doc": "torque/thrust ratio kQ/kT*u_hover = 0.029 m (realistic prop range 0.01-0.03). Was 0.5 with kT=60.1 -> ratio 0.008, the weak-yaw-authority finding in bench_signs.py. Roll/yaw authority ratio now ~8 (typical multirotor).",
+    "k_thrust_pusher":     35.0,
+    "_k_thrust_pusher_doc": "2026-06-10: was 8.0 — impossible to fly fixed-wing (8 N max could not even overcome the then-isotropic hover drag; measured top speed 0.4 m/s). Level cruise at AIRSPEED_CRUISE=25 m/s needs 22.5 N (parasite qS·CD0=17.2 N with CD0=0.10 + induced 0.3 N + body drag_coeff_forward 5.0 N) -> 35 N gives cruise at u=0.80 (PWM 1802), TECS_CLMB_MAX=5 m/s climb at 25 m/s at u=0.90, max level ~31.5 m/s (< AIRSPEED_MAX 35).",
+
+    "motor_time_constant_s": 0.03,
+    "_motor_time_constant_doc": "30 ms lag prevents instant step-torque impulses from AP's rate integrators at liftoff.",
+    "rotational_damping":    3.0,
+    "_rotational_damping_doc": "3.0 N·m/(rad/s) provides damping equivalent to rotor-disk aerodynamics at hover. Required: UE suppresses FixedWingAeroComponent below 8 m/s, leaving zero natural damping. Without this, cascaded angle→rate PIDs = two stacked integrators → oscillation → flip.",
+    "drag_coeff":             4.0,
+    "_drag_coeff_doc": "4.0 N·s/m linear heave damping, BODY Z ONLY (history: 0.15 -> 6.0 -> 15.0 isotropic -> 15.0 Z-only -> 4.0, all 2026-06-10). Stands in for rotor-inflow damping along the rotor axis; 4.0 is the physical estimate rho*A_disk*v_induced for 4x 22-inch props at 7.4 N each. The 15.0 era was a stability band-aid from BEFORE the frame-drop/baro root-cause fix; with those fixed, hover is mm-class at 4.0 too (revalidated 2026-06-10 PM3). 15.0 had two fatal side effects: (a) isotropic it capped the pusher at 0.4 m/s (no transition possible); (b) even Z-only, a 1.5 m/s descent got 22 N of upward drag (~75% weight) so the lift motors rode the Q_M_SPIN_MIN floor and attitude control went one-sided -> +/-30-43 deg descent wobble (QLAND/QLOITER, transition or not). Must not load body X/Y; faded out between hover_drag_fade_lo_ms and hover_drag_fade_hi_ms — rotor inflow does not exist in wing-borne cruise.",
+
+    "drag_coeff_hover_xy":    2.0,
+    "_drag_coeff_hover_xy_doc": "Hover translational damping on body X/Y in N/(m/s). Mild position-hold aid (tau = m/c = 1.5 s); small enough that the pusher (28 N at u=0.9) punches through it during transition — sim check: 0->13 m/s in 2.8 s, 18 m/s (Q_ASSIST off) in 3.9 s. Faded out with the same band as drag_coeff.",
+    "drag_coeff_forward":     0.20,
+    "_drag_coeff_forward_doc": "Residual always-on isotropic linear parasite drag (fuselage/arms) in N/(m/s). This is the original pre-heave-fix value; wing CD0 covers the rest above stall.",
+    "hover_drag_fade_lo_ms":  6.0,
+    "hover_drag_fade_hi_ms": 12.0,
+    "_hover_drag_fade_doc": "Full hover drag below 6 m/s (hover regime — preserves the heave-damping wallow fix), linearly down to only drag_coeff_forward above 12 m/s. The wing takes over heave damping in that band: dL/dw = 0.5*rho*V*S*CLa = 23 N·s/m at 12 m/s, already above the 15 being handed off."
+}

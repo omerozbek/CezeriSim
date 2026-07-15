@@ -1,0 +1,11 @@
+{
+    "_about": "Pasifik powertrain — created from the sitl_copter values (k_thrust derived through AP's full output path from MOT_THST_HOVER 0.35, MOT_THST_EXPO 0.65, SPIN 0.15-0.95: u_hover=0.56, kT=(1.5*9.81/4)/0.56^2 = 11.73 N). Replace with measured Pasifik data via the Models menu.",
+
+    "pwm_min":    1000,
+    "pwm_max":    2000,
+
+    "k_thrust":   11.73,
+    "k_torque":   0.25,
+
+    "drag_coeff": 0.25
+}
