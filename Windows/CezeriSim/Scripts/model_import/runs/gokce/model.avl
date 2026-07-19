@@ -1,0 +1,98 @@
+gokce
+#Mach
+0.0
+#IYsym IZsym Zsym
+0 0 0.0
+#Sref   Cref    Bref
+0.6395 0.3457 1.8800
+#Xref   Yref    Zref
+0.0807 0.0 -0.0000
+#CDp
+0.0
+
+SURFACE
+Wing
+#Nchord Cspace Nspan Sspace
+10 1.0 24 1.0
+COMPONENT
+1
+YDUPLICATE
+0.0
+ANGLE
+1.700
+
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.0000 0.0000 0.0000 0.4153 0.000
+NACA
+2412
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.0000 0.4700 0.0000 0.3402 0.000
+NACA
+2412
+CONTROL
+aileron 1.0 0.750 0. 0. 0. -1.0
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.0000 0.8900 0.0000 0.2730 0.000
+NACA
+2412
+CONTROL
+aileron 1.0 0.750 0. 0. 0. -1.0
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.0000 0.9400 0.0000 0.2650 0.000
+NACA
+2412
+
+SURFACE
+Horizontal tail
+#Nchord Cspace Nspan Sspace
+8 1.0 12 1.0
+COMPONENT
+1
+YDUPLICATE
+0.0
+ANGLE
+0.000
+
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+1.0402 0.0000 0.0000 0.1850 0.000
+NACA
+0009
+CONTROL
+elevator 1.0 0.650 0. 0. 0. 1.0
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+1.0402 0.3000 0.0000 0.1850 0.000
+NACA
+0009
+CONTROL
+elevator 1.0 0.650 0. 0. 0. 1.0
+
+SURFACE
+Fin
+#Nchord Cspace Nspan Sspace
+8 1.0 10 1.0
+COMPONENT
+1
+ANGLE
+0.0
+
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.9968 0.0000 0.0000 0.1357 0.000
+NACA
+0009
+CONTROL
+rudder 1.0 0.700 0. 0. 0. 1.0
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.9968 0.0000 0.2800 0.1357 0.000
+NACA
+0009
+CONTROL
+rudder 1.0 0.700 0. 0. 0. 1.0
+

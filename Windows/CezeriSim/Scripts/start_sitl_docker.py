@@ -231,9 +231,28 @@ def write_instance_parm(vehicle_dir: Path, g: int, home: dict) -> Path:
     return parm_path
 
 
+def parse_home_override(home_arg: str | None) -> dict | None:
+    """Parse --home 'lat,lon[,alt[,hdg]]' into a base-home dict (hdg optional —
+    None means 'keep the vehicle's SIM_OPOS_HDG')."""
+    if not home_arg:
+        return None
+    parts = [p.strip() for p in home_arg.split(",")]
+    if len(parts) < 2:
+        print(f"[ERROR] --home needs 'lat,lon[,alt[,hdg]]', got: {home_arg}")
+        sys.exit(1)
+    try:
+        return {"lat": float(parts[0]), "lon": float(parts[1]),
+                "alt": float(parts[2]) if len(parts) > 2 else 0.0,
+                "hdg": float(parts[3]) if len(parts) > 3 else None}
+    except ValueError:
+        print(f"[ERROR] --home values must be numbers: {home_arg}")
+        sys.exit(1)
+
+
 def build_fleet_instances(drones: int, vtols: int,
                           drone_vehicle: str | None,
-                          vtol_vehicle: str | None) -> list[dict]:
+                          vtol_vehicle: str | None,
+                          home_override: dict | None = None) -> list[dict]:
     """Instances in global-index order: drones 0..N-1, then VTOLs N..N+M-1."""
     drone_dir = resolve_type_vehicle("drone", drone_vehicle) if drones > 0 else None
     vtol_dir  = resolve_type_vehicle("vtol",  vtol_vehicle)  if vtols  > 0 else None
@@ -245,6 +264,17 @@ def build_fleet_instances(drones: int, vtols: int,
     if base is None:
         print("[WARN] No SIM_OPOS_* in vehicle params — using legacy default home.")
         base = {"lat": 41.0082000, "lon": 28.9784000, "alt": 0.0, "hdg": 0.0}
+
+    # --home (the UE world-origin override / active custom world): replaces
+    # the base LAT/LON/ALT; heading stays the vehicle's unless given. UE's
+    # EnsureBaseHome applies the SAME override so both sides agree.
+    if home_override is not None:
+        base["lat"] = home_override["lat"]
+        base["lon"] = home_override["lon"]
+        base["alt"] = home_override["alt"]
+        if home_override["hdg"] is not None:
+            base["hdg"] = home_override["hdg"]
+        print(f"[info] Base home OVERRIDDEN (--home): {home_str(base)}")
 
     instances = []
     for g in range(drones + vtols):
@@ -311,7 +341,17 @@ def generate_fleet_compose(instances: list[dict], host_ipv4: str) -> None:
 
 
 def check_image_has_copter() -> None:
-    """Fleet drones need the arducopter binary — old images only built plane."""
+    """Fleet drones need the arducopter binary — old images only built plane.
+
+    The actual check spins up a container, which costs several seconds on
+    every fleet start — cache the verdict per image ID (a fast metadata call)
+    so only a rebuilt image pays for the container run again."""
+    image_id = subprocess.run(
+        ["docker", "image", "inspect", "-f", "{{.Id}}", "cezeri-sitl:latest"],
+        capture_output=True, text=True).stdout.strip()
+    cache = GENERATED_DIR / ".arducopter_image_check"
+    if image_id and cache.exists() and cache.read_text().strip() == image_id:
+        return
     r = subprocess.run(
         ["docker", "run", "--rm", "--entrypoint", "test", "cezeri-sitl:latest",
          "-x", "/home/ardupilot/ardupilot/build/sitl/bin/arducopter"],
@@ -320,6 +360,9 @@ def check_image_has_copter() -> None:
         print("[ERROR] The cezeri-sitl image has no arducopter binary.")
         print("        Rebuild once:  python start_sitl_docker.py --build")
         sys.exit(1)
+    if image_id:
+        GENERATED_DIR.mkdir(exist_ok=True)
+        cache.write_text(image_id)
 
 
 def kill_stale_relays() -> None:
@@ -378,13 +421,15 @@ def print_fleet_summary(instances: list[dict]) -> None:
 
 
 def cmd_fleet_start(drones: int, vtols: int, drone_vehicle: str | None,
-                    vtol_vehicle: str | None, rebuild: bool, dry_run: bool) -> None:
+                    vtol_vehicle: str | None, rebuild: bool, dry_run: bool,
+                    home_override: dict | None = None) -> None:
     if not dry_run:
         check_docker()
     if rebuild:
         cmd_build()
 
-    instances = build_fleet_instances(drones, vtols, drone_vehicle, vtol_vehicle)
+    instances = build_fleet_instances(drones, vtols, drone_vehicle, vtol_vehicle,
+                                      home_override)
     host_ipv4 = resolve_host_ipv4() if not dry_run else "192.168.65.254"
     generate_fleet_compose(instances, host_ipv4)
 
@@ -417,7 +462,7 @@ def cmd_fleet_start(drones: int, vtols: int, drone_vehicle: str | None,
         run(compose + ["up"], check=True)
     except KeyboardInterrupt:
         print("\nStopping fleet...")
-        run(compose + ["down", "--remove-orphans"])
+        run(compose + ["down", "--remove-orphans", "-t", "2"])
     except subprocess.CalledProcessError as e:
         # `compose up` returns non-zero when the fleet is taken down externally
         # (--stop from the UE menus); that must exit 0 or the `|| pause` guard
@@ -436,10 +481,21 @@ def cmd_fleet_start(drones: int, vtols: int, drone_vehicle: str | None,
                     proc.kill()
 
 
-def docker_env_for_backend(backend: str, vehicle_dir: Path) -> dict:
+def docker_env_for_backend(backend: str, vehicle_dir: Path,
+                           home_override: dict | None = None) -> dict:
     """Build the env dict passed to `docker compose up` based on backend."""
     env = os.environ.copy()
-    env["AP_HOME"] = read_vehicle_home(vehicle_dir)
+    if home_override is not None:
+        base = read_opos(vehicle_dir) or {"lat": 0.0, "lon": 0.0,
+                                          "alt": 0.0, "hdg": 0.0}
+        base["lat"], base["lon"] = home_override["lat"], home_override["lon"]
+        base["alt"] = home_override["alt"]
+        if home_override["hdg"] is not None:
+            base["hdg"] = home_override["hdg"]
+        env["AP_HOME"] = home_str(base)
+        print(f"[info] Home OVERRIDDEN (--home): {env['AP_HOME']}")
+    else:
+        env["AP_HOME"] = read_vehicle_home(vehicle_dir)
     if backend == "ap_native":
         env["AP_MODEL"] = "quadplane"
         env["AP_EXTRA_ARGS"] = ""   # no --sim-address: AP uses internal physics, no external server
@@ -456,11 +512,25 @@ def docker_env_for_backend(backend: str, vehicle_dir: Path) -> dict:
 
 
 def check_docker() -> None:
-    result = run(["docker", "info"], capture_output=True)
+    # `docker version` is a lightweight daemon ping — `docker info` collects
+    # the full system report and is noticeably slower on a busy machine.
+    # NOTE: if Docker Desktop's Resource Saver has paused the Linux VM (it is
+    # ON by default and kicks in when no container ran for a while), the first
+    # docker command blocks here until the VM resumes — that wake-up, not this
+    # script, is what takes tens of seconds. Warn when it happens.
+    started = time.monotonic()
+    result = run(["docker", "version", "--format", "{{.Server.Version}}"],
+                 capture_output=True)
     if result.returncode != 0:
         print("[ERROR] Docker Desktop is not running or not installed.")
         print("        Start Docker Desktop and try again.")
         sys.exit(1)
+    waited = time.monotonic() - started
+    if waited > 5.0:
+        print(f"[info] Docker engine took {waited:.0f}s to answer — Docker "
+              "Desktop's Resource Saver likely paused the VM while idle. "
+              "Disable it under Docker Desktop Settings > Resources > "
+              "Resource Saver to make start/stop immediate again.")
 
 
 def list_vehicles() -> None:
@@ -579,13 +649,14 @@ def start_servo_relay() -> subprocess.Popen | None:
         return None
 
 
-def cmd_start(rebuild: bool, vehicle_override: str | None) -> None:
+def cmd_start(rebuild: bool, vehicle_override: str | None,
+              home_override: dict | None = None) -> None:
     check_docker()
     vehicle_dir = resolve_vehicle(vehicle_override)
     prepare_vehicle_parm(vehicle_dir)
 
     backend = read_backend(vehicle_dir)
-    env = docker_env_for_backend(backend, vehicle_dir)
+    env = docker_env_for_backend(backend, vehicle_dir, home_override)
 
     if rebuild:
         cmd_build()
@@ -621,7 +692,7 @@ def cmd_start(rebuild: bool, vehicle_override: str | None) -> None:
         run(["docker", "compose", "up"], env=env, check=True)
     except KeyboardInterrupt:
         print("\nStopping...")
-        run(["docker", "compose", "down"], env=env)
+        run(["docker", "compose", "down", "-t", "2"], env=env)
     finally:
         for proc in [vis_proc, relay_proc]:
             if proc and proc.poll() is None:
@@ -635,12 +706,15 @@ def cmd_start(rebuild: bool, vehicle_override: str | None) -> None:
 def cmd_stop() -> None:
     check_docker()
     print("Stopping SITL container(s)...")
-    # Legacy single-vehicle compose project
-    run(["docker", "compose", "down"], check=False)
-    # Fleet compose project (if a fleet was ever generated)
+    # -t 2: SITL containers are disposable (state lives on the host), so give
+    # SIGTERM only 2 s before SIGKILL instead of Docker's default 10 s grace
+    # per project — the SITL processes ignore SIGTERM anyway, which made every
+    # stop pay the full grace period. Fleet project first (the common case).
     if FLEET_COMPOSE.exists():
         run(["docker", "compose", "-p", FLEET_PROJECT, "-f", str(FLEET_COMPOSE),
-             "down", "--remove-orphans"], check=False)
+             "down", "--remove-orphans", "-t", "2"], check=False)
+    # Legacy single-vehicle compose project
+    run(["docker", "compose", "down", "-t", "2"], check=False)
     kill_stale_relays()
     print("[OK] Containers stopped.")
 
@@ -664,6 +738,14 @@ def main() -> None:
                         help="VTOL vehicle config (default: Vehicles/active_vehicle.txt)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Fleet mode: generate parms + compose file, don't start")
+    parser.add_argument("--home", metavar="LAT,LON[,ALT[,HDG]]",
+                        help="Override the base home (UE world-origin override / "
+                             "active custom world) — replaces the vehicle's "
+                             "SIM_OPOS lat/lon/alt; heading stays the vehicle's "
+                             "unless given")
+    parser.add_argument("--restart", action="store_true",
+                        help="Stop any running containers/relays first, then "
+                             "start fresh (clean-restart from the pause menu)")
     parser.add_argument("--build",  action="store_true", help="Rebuild image before starting")
     parser.add_argument("--stop",   action="store_true", help="Stop containers and relays")
     parser.add_argument("--logs",   action="store_true", help="Tail container logs")
@@ -676,17 +758,25 @@ def main() -> None:
         cmd_stop()
     elif args.logs:
         cmd_logs()
-    elif args.drones is not None or args.vtols is not None:
-        drones = max(args.drones or 0, 0)
-        vtols  = max(args.vtols or 0, 0)
-        if drones + vtols == 0:
-            print("[ERROR] Fleet mode needs at least one vehicle "
-                  "(--drones N and/or --vtols M).")
-            sys.exit(1)
-        cmd_fleet_start(drones, vtols, args.drone_vehicle, args.vtol_vehicle,
-                        rebuild=args.build, dry_run=args.dry_run)
     else:
-        cmd_start(rebuild=args.build, vehicle_override=args.vehicle)
+        if args.restart:
+            # Clean restart (pause menu Restart button): tear down whatever is
+            # running — containers AND relays — before starting fresh.
+            cmd_stop()
+        home_override = parse_home_override(args.home)
+        if args.drones is not None or args.vtols is not None:
+            drones = max(args.drones or 0, 0)
+            vtols  = max(args.vtols or 0, 0)
+            if drones + vtols == 0:
+                print("[ERROR] Fleet mode needs at least one vehicle "
+                      "(--drones N and/or --vtols M).")
+                sys.exit(1)
+            cmd_fleet_start(drones, vtols, args.drone_vehicle, args.vtol_vehicle,
+                            rebuild=args.build, dry_run=args.dry_run,
+                            home_override=home_override)
+        else:
+            cmd_start(rebuild=args.build, vehicle_override=args.vehicle,
+                      home_override=home_override)
 
 
 if __name__ == "__main__":
