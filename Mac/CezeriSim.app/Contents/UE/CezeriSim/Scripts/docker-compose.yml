@@ -4,7 +4,7 @@
 # Start:       python start_sitl_docker.py        (resolves active vehicle, then docker compose up)
 # Stop:        docker compose down
 #
-# MAVLink connection from Windows:
+# MAVLink connection from the host (Windows/Mac/Linux):
 #   tcp:localhost:5760     (mavproxy / pymavlink)
 # JSON physics port:
 #   udp 9002               (UE ArduPilotJSONBridge)
@@ -41,8 +41,9 @@ services:
 
     ports:
       # Servo relay: AP sends servo OUT to host.docker.internal:9006 (relay port).
-      # servo_relay.py on Windows receives on 9006, re-sends as 127.0.0.1→9002 (UE).
-      # Windows Firewall blocks Docker-NAT traffic to UE's port 9002; via 127.0.0.1 it works.
+      # servo_relay.py receives on 9006, re-sends as 127.0.0.1→9002 (UE).
+      # Routing via 127.0.0.1 avoids host-firewall/NAT issues (seen with Windows
+      # Firewall) blocking Docker's NAT path straight to UE's port 9002.
       # 9003 maps host→container: UE sends JSON to localhost:9003 → Docker → container:9003 → AP.
       # NOTE: do NOT publish 9006. AP sends servo-out to host:9006 where servo_relay.py
       # listens. Publishing 9006:9006 makes Docker's proxy also bind host:9006 and grab
@@ -53,7 +54,7 @@ services:
       - "5760:5760/tcp"    # MAVLink SERIAL0 — control scripts
       - "5762:5762/tcp"    # MAVLink SERIAL1 — visualizer_bridge.py (keeps 5760 free for control)
 
-    # Needed on Linux Docker; Docker Desktop for Windows sets this automatically
+    # Needed on Linux Docker Engine and Colima; Docker Desktop (Windows/Mac) sets this automatically
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

@@ -1,0 +1,456 @@
+# vtol_default -- PROTECTED default VTOL model (managed by the MODELS menu).
+# Cannot be edited or deleted from the UI; duplicate it to make an editable model.
+# Data snapshot of gokce_flight16 (the active VTOL when the Models system was added).
+#
+# gokce_flight16 — faithful replay config of the REAL flight in
+# C:/Users/Omer/Desktop/Log/00000016.BIN (21-may configuration).
+# Derived from Vehicles/gokce/params.parm with the params below reset to
+# the values in that log's onboard PARM dump; SIM_OPOS = its arming point;
+# SIM_WIND = its EKF wind estimate (4.1 m/s from 44 deg). Servo/RC remap
+# and [SITL] invariants kept from gokce. Mission:
+# Scripts/control/logs/real_00000016_mission.waypoints (extracted from the log).
+#
+# gokce params.parm — ArduPlane QuadPlane SITL parameters for CezeriSim
+#
+# Source: gökçesuasvideo22mayısparametreleri.param
+#         (REAL Orange Cube full param dump, 2026-05-22 flight — the flight whose
+#         Mission Planner logs the sim output will be compared against).
+# All control/nav/limit values are VERBATIM from that dump. Do not retune them —
+# they are the ground truth for the sim-vs-real comparison.
+#
+# Lines marked [SITL] are simulation-harness overrides (documented per line).
+# Everything else: real vehicle.
+#
+# Critical invariants (docs/INVARIANTS.md):
+#   SIM_RATE_HZ=1000  must match UArduPilotJSONBridge::SimRateHz in UE
+#   SIM_SPEEDUP 5 + BARO_FIELD_ELV nonzero on every ue_physics vehicle
+#   Servo remapping must match UVTOLPhysicsComponent pwm[] channel order
+#   kThrust in electrical.json derived from Q_M_THST_HOVER through AP's FULL
+#   output path (expo+spin window): t=0.3488028 -> u=0.5590 -> kT=78.49 N
+
+# ---- QuadPlane enable (real) -------------------------------------------------
+Q_ENABLE        1
+Q_FRAME_CLASS   1       # Quad
+Q_FRAME_TYPE    1       # X configuration
+
+# ---- Simulation rate [SITL] (must match UE SimRateHz) -------------------------
+SIM_RATE_HZ     1000
+SIM_FLOAT_EXCEPT 0
+
+# ---- Arming [SITL] -------------------------------------------------------------
+ARMING_CHECK    0       # [SITL] real=1; EKF-fusion gating is done by the flight scripts
+
+# ---- 2026-06-10 lockstep/EKF-stream invariants [SITL] --------------------------
+# SIM_SPEEDUP 5: AP never self-paces to wall clock, so the JSON socket queue
+# can never back up and burst-drop frames (root cause of the ±2-5 m EKF hover
+# wallow). UE's real-time-paced physics thread is the sole clock master.
+# BARO_FIELD_ELV nonzero: stops the 1 Hz baro-datum resets when home alt is 0.
+SIM_SPEEDUP     5
+BARO_FIELD_ELV  10
+
+# ---- SITL sensor pipeline [SITL] ----------------------------------------------
+SIM_BARO_RND    0       # [SITL] noiseless sim baro — it is the EK3 height source
+SIM_GPS_HZ      5       # [SITL] matches the real GPS1_RATE_MS 200 (5 Hz)
+
+# ---- Wind [SITL] ----------------------------------------------------------------
+# Read by BOTH backends: ap_native applies these inside AP's own physics;
+# in ue_physics the UE plant parses this file (UVTOLPhysicsComponent::
+# LoadWindFromParams) and applies identical wind to aero/drag/airspeed.
+# The real 22-may flight had ~3 m/s at hover; direction was not recorded —
+# 270 (westerly) is a placeholder, update it if the real log's wind estimate
+# says otherwise. Set SIM_WIND_SPD 0 for the old zero-wind behaviour.
+SIM_WIND_SPD    4.1     # [SITL] mean wind speed m/s (~real 22-may conditions)  # [flight16: real log value]
+SIM_WIND_DIR    44     # [SITL] direction wind blows FROM, deg (placeholder)  # [flight16: real log value]
+SIM_WIND_TURB   1.0     # [SITL] gust standard deviation m/s  # [flight16: real log value]
+
+# ---- Airspeed (real envelope; sensor disabled in SITL) -------------------------
+# Real vehicle: ARSPD_TYPE=1 (MS4525 present) but ARSPD_USE=0 — the 22-may
+# flight flew on synthetic airspeed, exactly like the sim does.
+ARSPD_TYPE      0           # [SITL] real=1 (sensor present but unused)
+ARSPD_USE       0           # real value (!)
+ARSPD_RATIO     2           # real
+ARSPD_OPTIONS   11          # real
+AIRSPEED_CRUISE 19          # real (was 18 on the 21-may param set)  # [flight16: real log value]
+AIRSPEED_MIN    17          # real
+AIRSPEED_MAX    26          # real  # [flight16: real log value]
+AIRSPEED_STALL  15          # real  # [flight16: real log value]
+
+# ---- EKF selection [SITL-pinned, real uses EKF3 too] ---------------------------
+AHRS_EKF_TYPE   3           # real=3; EKF2 is broken on the 4.6.3 JSON backend (BUGFIXES 2026-06-10)
+EK3_ENABLE      1           # real
+EK2_ENABLE      0           # [SITL] EKF2 accel-bias explosion on JSON backend
+EK3_IMU_MASK    1           # [SITL] one simulated IMU; real=7 (three IMUs)
+EK3_PRIMARY     0           # [SITL] real=1 (second IMU) — only IMU 0 exists here
+
+# ---- Compass (real vehicle flies compass yaw; INVARIANTS: must stay enabled) ---
+# SITL synthesizes a magnetometer from the JSON attitude + location, so the sim
+# compass is always consistent with the UE plant. EK3_SRC1_YAW=1 (compass) is
+# the REAL yaw source config. Hardware cal (offsets/scales/DEV_IDs) not carried.
+COMPASS_ENABLE  1           # real=1
+COMPASS_USE     1           # [SITL] real uses external compass #2 (USE=0, USE2=1); sim has one clean compass
+COMPASS_AUTODEC 1           # real — declination auto from location
+
+# ---- EKF3 noise + source selection (real vehicle, verbatim) --------------------
+EK3_GYRO_P_NSE  0.015
+EK3_ACC_P_NSE   0.35
+EK3_POSNE_M_NSE 0.5
+EK3_VELNE_M_NSE 0.5
+EK3_VELD_M_NSE  0.7
+EK3_ALT_M_NSE   3
+EK3_MAG_M_NSE   0.05
+EK3_EAS_M_NSE   1.4
+EK3_ABIAS_P_NSE 0.02
+EK3_GBIAS_P_NSE 0.001
+EK3_WIND_P_NSE  0.1
+EK3_WIND_PSCALE 1
+EK3_SRC1_POSXY  3           # GPS
+EK3_SRC1_POSZ   1           # baro
+EK3_SRC1_VELXY  3           # GPS
+EK3_SRC1_VELZ   3           # GPS
+EK3_SRC1_YAW    1           # compass
+EK3_GLITCH_RAD  25
+EK3_GND_EFF_DZ  4
+
+# ---- GPS home [SITL] — mission home of gökçesuasvideo2mission.waypoints --------
+# Must match --home passed by start_sitl_docker.py (read from these params) and
+# UE DefaultHomeLat/Lon on the JSONBridge component. Real field elevation is
+# 9.47 m AMSL; sim uses 0 (waypoint altitudes are home-RELATIVE, frame 3, so
+# the trajectory is identical — only absolute AMSL in logs differs by 9.47 m).
+SIM_OPOS_LAT    41.1008290  # [flight16: real log value]
+SIM_OPOS_LNG    28.5516954  # [flight16: real log value]
+SIM_OPOS_ALT    0.0
+SIM_OPOS_HDG    0
+
+# ---- Servo channel remapping [SITL/UE-plant] ------------------------------------
+# UVTOLPhysicsComponent reads:  pwm[0..3]=lift motors, pwm[4]=ail-L, pwm[5]=ail-R,
+#                               pwm[6]=elevator, pwm[7]=rudder, pwm[8]=pusher.
+# The REAL vehicle wiring (22-may dump) is different (motors on SERVO9-12/14,
+# elevator SERVO1/5, ailerons SERVO2/4, pusher SERVO3, rudder SERVO6) — the sim
+# remaps because the UE plant reads fixed channel slots. Functions, not wiring,
+# are what matter for the flight controller.
+SERVO1_FUNCTION  33     # Q_Motor1 (Front-Right, CCW) → pwm[0]
+SERVO2_FUNCTION  34     # Q_Motor2 (Rear-Left,   CCW) → pwm[1]
+SERVO3_FUNCTION  35     # Q_Motor3 (Front-Left,  CW)  → pwm[2]
+SERVO4_FUNCTION  36     # Q_Motor4 (Rear-Right,  CW)  → pwm[3]
+SERVO5_FUNCTION   4     # Aileron L                   → pwm[4]
+SERVO5_REVERSED   1     # [SITL/UE-plant] AP func-4 high = roll right; UE needs (R-L)/2 > 0 (BUGFIXES 2026-06-10 PM3)
+SERVO5_MIN      1000    # [SITL/UE-plant] UE maps 1000/2000 → ±max_control_deflection (20°, real value)
+SERVO5_MAX      2000
+SERVO6_FUNCTION   4     # Aileron R                   → pwm[5]
+SERVO6_REVERSED   0
+SERVO6_MIN      1000
+SERVO6_MAX      2000
+SERVO7_FUNCTION  19     # Elevator                    → pwm[6]
+SERVO7_REVERSED   1     # [SITL/UE-plant] AP func-19 high = nose UP; UE CmElevator<0 needs the flip
+SERVO7_MIN      1000
+SERVO7_MAX      2000
+SERVO8_FUNCTION  21     # Rudder                      → pwm[7]
+SERVO8_MIN      1000
+SERVO8_MAX      2000
+SERVO9_FUNCTION  70     # Pusher throttle             → pwm[8]
+SERVO9_MIN      1000    # real Flycolor ESC range 1000/2000 (real SERVO3_MIN/MAX)
+SERVO9_MAX      2000
+SERVO9_TRIM     1000
+
+# ---- Fixed-wing throttle / speed limits (real) ----------------------------------
+THR_MIN         0
+THR_MAX         100
+THR_SLEWRATE    100
+THROTTLE_NUDGE  1
+TRIM_THROTTLE   45
+SCALING_SPEED   15
+ROLL_LIMIT_DEG  45          # real (was 45 on the 21-may set)  # [flight16: real log value]
+PTCH_LIM_MAX_DEG    25      # real (was 20)  # [flight16: real log value]
+PTCH_LIM_MIN_DEG   -25      # real (was -25)  # [flight16: real log value]
+LEVEL_ROLL_LIMIT 5
+STALL_PREVENTION 1
+KFF_RDDRMIX     0.5           # real (was 0.5 on the 21-may set)  # [flight16: real log value]
+KFF_THR2PTCH    0
+RUDD_DT_GAIN    10
+MIXING_GAIN     0.5
+STICK_MIXING    1
+STAB_PITCH_DOWN 2
+USE_REV_THRUST  2
+
+# ---- Fixed-wing rate controllers (real, verbatim) --------------------------------
+RLL_RATE_P      0.08
+RLL_RATE_I      0.15
+RLL_RATE_D      0
+RLL_RATE_FF     0.345
+RLL_RATE_IMAX   0.666
+RLL_RATE_FLTD   12
+RLL_RATE_FLTT   3
+RLL_RATE_SMAX   150
+RLL2SRV_TCONST  0.5
+RLL2SRV_RMAX    0
+
+PTCH_RATE_P     0.04
+PTCH_RATE_I     0.15
+PTCH_RATE_D     0
+PTCH_RATE_FF    0.345
+PTCH_RATE_IMAX  0.666
+PTCH_RATE_FLTD  12
+PTCH_RATE_FLTT  3
+PTCH_RATE_SMAX  150
+PTCH2SRV_TCONST 0.5
+PTCH2SRV_RLL    1
+PTCH2SRV_RMAX_DN    0
+PTCH2SRV_RMAX_UP    0
+PTCH_TRIM_DEG   0
+
+YAW2SRV_DAMP    0
+YAW2SRV_IMAX    1500
+YAW2SRV_INT     0
+YAW2SRV_RLL     1
+YAW2SRV_SLIP    0
+
+# ---- TECS (fixed-wing energy controller, real, verbatim) -------------------------
+TECS_TIME_CONST 5
+TECS_THR_DAMP   0.5
+TECS_INTEG_GAIN 0.3
+TECS_PTCH_DAMP  0.3
+TECS_VERT_ACC   7
+TECS_HGT_OMEGA  3
+TECS_SPD_OMEGA  2
+TECS_SPDWEIGHT  1
+TECS_CLMB_MAX   5
+TECS_SINK_MIN   2
+TECS_SINK_MAX   5
+TECS_PITCH_MAX  15
+TECS_PITCH_MIN  0
+TECS_RLL2THR    10
+TECS_HDEM_TCONST    3
+TECS_FLARE_HGT  1
+TECS_PTCH_FF_K  0
+TECS_PTCH_FF_V0 12
+TECS_SYNAIRSPEED    0
+TECS_OPTIONS    0
+TECS_TKOFF_IGAIN    0
+TECS_LAND_ARSPD -1
+TECS_LAND_DAMP  0.5
+TECS_LAND_SINK  0.25
+TECS_LAND_SPDWGT    -1
+TECS_LAND_TCONST    2
+TECS_LAND_PMAX  10
+TECS_LAND_IGAIN 0
+TECS_LAND_PDAMP 0
+TECS_LAND_TDAMP 0
+TECS_LAND_SRC   0
+TECS_LAND_THR   -1
+TECS_APPR_SMAX  0
+
+# ---- Navigation (real, verbatim) --------------------------------------------------
+NAVL1_PERIOD    20
+NAVL1_DAMPING   0.75
+NAVL1_XTRACK_I  0.02
+NAVL1_LIM_BANK  0
+WP_RADIUS       55          # real (m, fixed-wing)
+WP_LOITER_RAD   70
+WP_MAX_RADIUS   0
+MIN_GROUNDSPEED 0
+LAND_FLARE_ALT  3
+LAND_FLARE_SEC  2
+LAND_WIND_COMP  50
+LAND_DISARMDELAY    20
+LAND_THEN_NEUTRL    0
+LAND_TYPE       0
+
+# ---- QuadPlane transition (real, verbatim) ----------------------------------------
+Q_TRANSITION_MS 5000  # [flight16: real log value]
+Q_ASSIST_SPEED  12          # real (was 13 on 21-may; stall band note resolved)  # [flight16: real log value]
+Q_ASSIST_ANGLE  40
+Q_ASSIST_ALT    0  # [flight16: real log value]
+Q_ASSIST_DELAY  0.5
+Q_BACKTRANS_MS  3000
+Q_BCK_PIT_LIM   10
+Q_TRAN_PIT_MAX  3
+Q_TRANS_DECEL   2
+Q_TRANS_FAIL    0
+Q_FWD_PIT_LIM   3
+Q_FWD_THR_GAIN  2
+Q_FWD_THR_USE   0
+Q_FWD_MANTHR_MAX    0
+Q_TRIM_PITCH    0
+Q_TKOFF_ARSP_LIM    0
+Q_TKOFF_FAIL_SCL    0
+
+# ---- QuadPlane motor limits (real, verbatim) ---------------------------------------
+Q_M_PWM_MIN     1000
+Q_M_PWM_MAX     2000
+Q_M_PWM_TYPE    0
+Q_M_SPIN_ARM    0
+Q_M_SPIN_MIN    0.15
+Q_M_SPIN_MAX    0.95
+Q_M_SPOOL_TIME  0.25
+Q_M_SPOOL_TIM_DN    0
+Q_M_THST_EXPO   0.65
+Q_M_HOVER_LEARN 0           # [SITL] real=2 (learn+save) — pinned so the real learned value below is never overwritten
+# Real learned hover point (22-may flight): through AP's expo+spin path this is
+# actuator a=0.5112 → u=0.5590 → hover PWM ≈ 1559 → kThrust=(10·9.81/4)/u²=78.49 N
+Q_M_THST_HOVER  0.35   # real learned value, verbatim  # [flight16: real log value]
+Q_M_YAW_HEADROOM    200
+Q_M_BOOST_SCALE 0
+Q_RC_SPEED      490
+
+# ---- QuadPlane angle / rate limits (real, verbatim) --------------------------------
+Q_ANGLE_MAX     3000
+Q_A_ANG_LIM_TC  1.0
+Q_A_INPUT_TC    0.2
+Q_A_ACCEL_R_MAX 40000
+Q_A_ACCEL_P_MAX 40000
+Q_A_ACCEL_Y_MAX 10000
+# NOTE: real vehicle runs 75 deg/s rate caps. sitl_ue needed 0 (unlimited) after
+# a descent limit cycle (BUGFIXES 2026-06-10 PM4) — but that cycle's root cause
+# was DETUNED rate gains (0.105) + the cap; gokce runs the full real gains
+# (0.25). Kept at the REAL value per the no-retuning rule; revisit only if a
+# descent oscillation shows up in testing.
+Q_A_RATE_R_MAX  75
+Q_A_RATE_P_MAX  75
+Q_A_RATE_Y_MAX  75
+Q_A_SLEW_YAW    6000
+Q_A_RATE_FF_ENAB    1
+
+# ---- QuadPlane attitude PID gains (real, verbatim) ---------------------------------
+Q_A_ANG_RLL_P   4.5
+Q_A_ANG_PIT_P   4.5
+Q_A_ANG_YAW_P   4.5
+Q_A_RAT_RLL_P   0.25
+Q_A_RAT_RLL_I   0.25
+Q_A_RAT_RLL_D   0.0036
+Q_A_RAT_RLL_IMAX    0.5
+Q_A_RAT_RLL_FLTD    10
+Q_A_RAT_RLL_FLTT    20
+Q_A_RAT_RLL_SMAX    50
+Q_A_RAT_PIT_P   0.25
+Q_A_RAT_PIT_I   0.25
+Q_A_RAT_PIT_D   0.0036
+Q_A_RAT_PIT_IMAX    0.5
+Q_A_RAT_PIT_FLTD    10
+Q_A_RAT_PIT_FLTT    20
+Q_A_RAT_PIT_SMAX    50
+Q_A_RAT_YAW_P   0.18
+Q_A_RAT_YAW_I   0.018
+Q_A_RAT_YAW_D   0
+Q_A_RAT_YAW_IMAX    0.5
+Q_A_RAT_YAW_FLTD    20
+Q_A_RAT_YAW_FLTE    2.5
+Q_A_RAT_YAW_FLTT    20
+Q_A_RAT_YAW_SMAX    50
+Q_A_THR_MIX_MAN 0.1
+Q_A_THR_MIX_MAX 0.5
+Q_A_THR_MIX_MIN 0.1
+Q_A_ANGLE_BOOST 1
+Q_A_THR_G_BOOST 0
+Q_A_LAND_P_MULT 1
+Q_A_LAND_R_MULT 1
+Q_A_LAND_Y_MULT 1
+Q_THROTTLE_EXPO 0.2
+
+# ---- QuadPlane position controller (real, verbatim) --------------------------------
+Q_P_POSXY_P     0.5
+Q_P_POSZ_P      1.0
+Q_P_VELXY_P     0.7
+Q_P_VELXY_I     0.35
+Q_P_VELXY_D     0.17
+Q_P_VELXY_IMAX  1000
+Q_P_VELXY_FLTD  5
+Q_P_VELXY_FLTE  5
+Q_P_VELZ_P      5.0
+Q_P_VELZ_I      0
+Q_P_VELZ_D      0
+Q_P_VELZ_IMAX   1000
+Q_P_VELZ_FLTD   5
+Q_P_VELZ_FLTE   5
+Q_P_ACCZ_P      0.3
+Q_P_ACCZ_I      1.0
+Q_P_ACCZ_D      0
+Q_P_ACCZ_IMAX   800
+Q_P_ACCZ_FLTE   10
+Q_P_JERK_XY     2
+Q_P_JERK_Z      5
+Q_P_ANGLE_MAX   0
+
+# ---- QuadPlane pilot / loiter / waypoint speeds (real, verbatim) --------------------
+Q_PILOT_SPD_UP  2.5
+Q_PILOT_SPD_DN  1.5
+Q_PILOT_ACCEL_Z 2.5
+Q_LOIT_SPEED    500
+Q_LOIT_ACC_MAX  250
+Q_LOIT_ANG_MAX  15
+Q_LOIT_BRK_ACCEL    50
+Q_LOIT_BRK_DELAY    1
+Q_LOIT_BRK_JERK 250
+Q_WP_SPEED      500
+Q_WP_SPEED_UP   300         # real (was 125 on 21-may set)  # [flight16: real log value]
+Q_WP_SPEED_DN   125         # real (was 125)  # [flight16: real log value]
+Q_WP_ACCEL      100
+Q_WP_ACCEL_Z    100
+Q_WP_RADIUS     500
+Q_WP_JERK       1
+Q_WP_RFND_USE   1
+Q_PLT_Y_EXPO    0.25
+Q_PLT_Y_RATE    100
+Q_PLT_Y_RATE_TC 0.25
+Q_GUIDED_MODE   1
+Q_OPTIONS       0
+
+# ---- QuadPlane land / RTL (real, verbatim) ------------------------------------------
+Q_LAND_FINAL_ALT    20  # [flight16: real log value]
+Q_LAND_FINAL_SPD    1
+Q_LAND_ALTCHG   0.2
+Q_LAND_ICE_CUT  1
+Q_NAVALT_MIN    5
+Q_RTL_ALT       15
+Q_RTL_ALT_MIN   10
+Q_RTL_MODE      1
+
+# ---- Wind vane (real, verbatim) ------------------------------------------------------
+Q_WVANE_ENABLE  1
+Q_WVANE_GAIN    0
+Q_WVANE_ANG_MIN 1
+
+# ---- Scheduler / INS filters (real behavioral values) --------------------------------
+SCHED_LOOP_RATE 300
+INS_GYRO_FILTER 20
+INS_ACCEL_FILTER    20
+
+# ---- Flight modes + RC calibration (real) --------------------------------------------
+# SITL feeds neutral RC; missions run in AUTO via MAVLink, so these only shape
+# RC-override interpretation and the boot mode. Hardware switch options
+# (RC7=154 arm/disarm, RC10=108) intentionally not carried.
+FLTMODE_CH      5
+FLTMODE1        20
+FLTMODE2        10
+FLTMODE3        20
+FLTMODE4        20
+FLTMODE5        19
+FLTMODE6        19
+INITIAL_MODE    0
+RCMAP_ROLL      1
+RCMAP_PITCH     2
+RCMAP_THROTTLE  3
+RCMAP_YAW       4
+RC1_MIN         1122
+RC1_MAX         1933
+RC1_TRIM        1527
+RC1_DZ          30
+RC2_MIN         1108
+RC2_MAX         1930
+RC2_TRIM        1530
+RC2_DZ          30
+RC3_MIN         1105
+RC3_MAX         1925
+RC3_TRIM        1105
+RC3_DZ          30
+RC4_MIN         1106
+RC4_MAX         1925
+RC4_TRIM        1517
+RC4_DZ          30
+RC5_MIN         1156
+RC5_MAX         1872
+RC5_TRIM        1156
+
+# ---- Logging (real) — full dataflash for Mission Planner comparison ------------------
+LOG_BITMASK     65535
+LOG_DISARMED    0
+LOG_FILE_BUFSIZE    200

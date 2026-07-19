@@ -1,0 +1,48 @@
+{
+    "_about": "PROTECTED default drone powertrain — snapshot of sitl_copter. k_thrust derived through AP's full output path (docs/ARCHITECTURE.md) from MOT_THST_HOVER 0.35, MOT_THST_EXPO 0.65, SPIN 0.15-0.95: u_hover=0.56, kT=(1.5*9.81/4)/0.56² = 11.73 N. Battery/motor/prop fields are catalogue placeholders for the future power model (stored, not yet consumed).",
+
+    "_doc": {
+        "pwm_min":               "Minimum PWM in microseconds. Must match MOT_PWM_MIN in params.parm.",
+        "pwm_max":               "Maximum PWM in microseconds. Must match MOT_PWM_MAX in params.parm.",
+        "k_thrust":              "Motor thrust coefficient in Newtons: T = k_thrust * throttle².",
+        "k_torque":              "Motor reaction torque coefficient: Q = k_torque * throttle².",
+        "motor_time_constant_s": "First-order motor thrust lag, seconds. STORED for the drone plant (instant response today) — the VTOL plant already consumes it.",
+        "rotational_damping":    "Rotational damping N·m/(rad/s). Stored for the drone plant.",
+        "drag_coeff":            "Linear body drag coefficient in N/(m/s), applied to translational velocity.",
+        "battery_cells_s":       "Battery cell count in series (S). Stored for the future battery/endurance model.",
+        "battery_capacity_mah":  "Battery capacity in mAh. Stored placeholder.",
+        "battery_voltage_full_v":    "Fully charged pack voltage (4.2 V/cell). Stored.",
+        "battery_voltage_nominal_v": "Nominal pack voltage (3.7 V/cell). Stored.",
+        "battery_internal_resistance_ohm": "Pack internal resistance in ohms. Stored.",
+        "hover_current_a":       "Total hover current draw, A. Stored placeholder.",
+        "motor_kv":              "Motor KV rating (RPM/V). Stored placeholder for a generic 1.5 kg quad.",
+        "motor_max_current_a":   "Motor maximum continuous current, A. Stored.",
+        "esc_max_current_a":     "ESC continuous current rating, A. Stored.",
+        "prop_diameter_in":      "Propeller diameter in inches. Stored.",
+        "prop_pitch_in":         "Propeller pitch in inches. Stored."
+    },
+
+    "pwm_min":    1000,
+    "pwm_max":    2000,
+
+    "k_thrust":   11.73,
+    "k_torque":   0.25,
+
+    "motor_time_constant_s": 0.03,
+    "rotational_damping":    0.0,
+
+    "drag_coeff": 0.25,
+
+    "battery_cells_s":        4,
+    "battery_capacity_mah": 5200,
+    "battery_voltage_full_v":  16.8,
+    "battery_voltage_nominal_v": 14.8,
+    "battery_internal_resistance_ohm": 0.012,
+    "hover_current_a":       14.0,
+
+    "motor_kv":             880,
+    "motor_max_current_a":   18.0,
+    "esc_max_current_a":     25.0,
+    "prop_diameter_in":      10.0,
+    "prop_pitch_in":          4.5
+}

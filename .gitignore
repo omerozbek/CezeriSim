@@ -41,6 +41,9 @@ Thumbs.db
 desktop.ini
 .DS_Store
 
+# AppleDouble/resource-fork junk left behind by zip round-trips through macOS
+__MACOSX/
+
 # Editor/IDE
 .vscode/
 .idea/

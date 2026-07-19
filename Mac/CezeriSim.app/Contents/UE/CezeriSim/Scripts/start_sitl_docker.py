@@ -326,15 +326,21 @@ def kill_stale_relays() -> None:
     """Kill any servo_relay.py left over from a previous run. Stale relays keep
     their UDP ports bound (SO_REUSEADDR makes the double-bind silent) and eat
     servo packets — the classic 'works sometimes' link."""
-    ps = ("Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | "
-          "Where-Object { $_.CommandLine -match 'servo_relay\\.py' } | "
-          "ForEach-Object { Stop-Process -Id $_.ProcessId -Force; $_.ProcessId }")
     try:
-        r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
-                           capture_output=True, text=True, timeout=30)
-        killed = [p for p in r.stdout.split() if p.strip().isdigit()]
-        if killed:
-            print(f"[info] Killed stale servo relay pid(s): {', '.join(killed)}")
+        if sys.platform == "win32":
+            ps = ("Get-CimInstance Win32_Process -Filter \"Name like 'python%'\" | "
+                  "Where-Object { $_.CommandLine -match 'servo_relay\\.py' } | "
+                  "ForEach-Object { Stop-Process -Id $_.ProcessId -Force; $_.ProcessId }")
+            r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                               capture_output=True, text=True, timeout=30)
+            killed = [p for p in r.stdout.split() if p.strip().isdigit()]
+            if killed:
+                print(f"[info] Killed stale servo relay pid(s): {', '.join(killed)}")
+        else:
+            r = subprocess.run(["pkill", "-f", "servo_relay.py"],
+                               capture_output=True, text=True, timeout=30)
+            if r.returncode == 0:
+                print("[info] Killed stale servo relay(s).")
     except Exception as e:
         print(f"[WARN] Stale-relay cleanup failed ({e}) — continuing.")
 
@@ -458,8 +464,8 @@ def docker_env_for_backend(backend: str, vehicle_dir: Path) -> dict:
 def check_docker() -> None:
     result = run(["docker", "info"], capture_output=True)
     if result.returncode != 0:
-        print("[ERROR] Docker Desktop is not running or not installed.")
-        print("        Start Docker Desktop and try again.")
+        print("[ERROR] Docker is not running (Docker Desktop / Colima / Docker Engine).")
+        print("        Start your Docker runtime and try again.")
         sys.exit(1)
 
 

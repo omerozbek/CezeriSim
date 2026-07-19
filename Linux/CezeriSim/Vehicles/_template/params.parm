@@ -1,0 +1,37 @@
+# params.parm — ArduPlane SITL parameters template
+# Copy this file to your vehicle folder and customise.
+# Pass to ArduPlane with: --defaults /path/to/params.parm
+#
+# Minimum required settings for a QuadPlane SITL session:
+
+Q_ENABLE        1
+Q_FRAME_CLASS   1
+Q_FRAME_TYPE    1
+
+SIM_RATE_HZ     1000
+ARMING_CHECK    0
+
+# --- GPS home (must match --home in docker-compose.yml and UE HomeLat/HomeLon/HomeAlt)
+SIM_OPOS_LAT    0.0
+SIM_OPOS_LNG    0.0
+SIM_OPOS_ALT    0.0
+SIM_OPOS_HDG    0
+
+# --- Servo channel remapping (must match UVTOLPhysicsComponent pwm[] order)
+SERVO1_FUNCTION  33
+SERVO2_FUNCTION  34
+SERVO3_FUNCTION  35
+SERVO4_FUNCTION  36
+SERVO5_FUNCTION   4
+SERVO6_FUNCTION   4
+SERVO6_REVERSED   1
+SERVO7_FUNCTION  19
+SERVO8_FUNCTION  21
+SERVO9_FUNCTION  70
+
+# --- Motor limits
+Q_M_PWM_MIN     1000
+Q_M_PWM_MAX     2000
+Q_M_THST_HOVER  0.5
+
+# --- Add all other parameters here ...

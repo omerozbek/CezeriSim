@@ -1,0 +1,211 @@
+# sitl_default.parm — Generic QuadPlane test vehicle for CezeriSim SITL
+#
+# PURPOSE: Testing MAVLink / pymavlink commands only.
+#          Not tuned to any real airframe — use 'gokce' for real-vehicle simulation.
+#
+# SOURCES:
+#   PID gains, airspeed limits, motor params:
+#     ArduPilot official Tools/autotest/default_params/quadplane.parm (verbatim where noted)
+#   SITL infrastructure, servo mapping, EKF, arming:
+#     Derived from the CezeriSim gokce vehicle with values adjusted for a 3 kg vehicle
+#
+# BACKEND: this vehicle uses backend="ap_native" (see mechanical.json).
+#   ArduPilot runs --model quadplane with its OWN built-in physics; UE is a pure
+#   visualizer with no JSON physics loop. PIDs below are the OFFICIAL quadplane.parm
+#   values, which were tuned against AP's built-in plant — they work first-try.
+#
+# To use the UE physics path instead, switch active_vehicle to one with
+# backend="ue_physics" (e.g. gokce), which uses --model JSON.
+
+
+# ---- QuadPlane enable -------------------------------------------------------
+Q_ENABLE        1
+Q_FRAME_CLASS   1       # Quad
+Q_FRAME_TYPE    1       # X configuration
+
+# ---- Simulation rate [SITL] — 400 Hz for AP native model (quadplane built-in physics).
+# NOTE: ue_physics vehicles use 1000 Hz to match UE SimRateHz. Not needed here.
+SIM_RATE_HZ     400
+
+# ---- Arming [SITL] ----------------------------------------------------------
+ARMING_CHECK    0
+
+# ---- Airspeed sensor [SITL] — no pitot tube in simulation -------------------
+ARSPD_TYPE      0
+ARSPD_USE       0
+ARSPD_RATIO     2
+
+# ---- Airspeed flight envelope (from official quadplane.parm) ----------------
+AIRSPEED_MAX    35      # m/s hard limit
+AIRSPEED_MIN    13      # m/s min operating airspeed
+AIRSPEED_CRUISE 25      # m/s cruise target
+
+# ---- SITL stability ---------------------------------------------------------
+SIM_FLOAT_EXCEPT 0
+
+# ---- EKF IMU lane selection [SITL] ------------------------------------------
+EK3_IMU_MASK    1
+
+# ---- Compass disabled [SITL] ------------------------------------------------
+# EKF yaw from GPS velocity heading — avoids in-flight MAG alignment jumps.
+COMPASS_ENABLE  0
+
+# ---- EKF3 noise — tightened for clean SITL sensor data ---------------------
+EK3_GYRO_P_NSE  0.015
+EK3_ACC_P_NSE   0.35
+EK3_GPS_P_NSE   0.1
+EK3_POSNE_M_NSE 0.5
+EK3_VELNE_M_NSE 0.5
+EK3_VELD_M_NSE  0.7
+EK3_ALT_M_NSE   3.0
+
+# ---- GPS home [SITL] — must match --home in docker-compose.yml --------------
+SIM_OPOS_LAT    41.0082000
+SIM_OPOS_LNG    28.9784000
+SIM_OPOS_ALT    0.0
+SIM_OPOS_HDG    0
+
+# ---- Servo channel remapping ------------------------------------------------
+# ap_native mode: SIM_QuadPlane.cpp uses motor_offset=4, so VTOL motors must
+# be on channels 5-8. Channels 1-4 are fixed-wing surfaces (read by plane sim).
+#
+# NOTE: This layout is ap_native-only. For ue_physics vehicles (gokce, etc.),
+# UVTOLPhysicsComponent reads pwm[0..3]=motors so motors stay on ch1-4.
+SERVO1_FUNCTION   4     # Aileron L (plane sim reads ch1)
+SERVO2_FUNCTION   4     # Aileron R (plane sim reads ch2)
+SERVO2_REVERSED   1     # mirror right aileron
+SERVO3_FUNCTION  19     # Elevator
+SERVO4_FUNCTION  21     # Rudder
+SERVO5_FUNCTION  33     # Q_Motor1 (Front-Right, CCW) ← motor_offset=4 → servo[4]
+SERVO6_FUNCTION  34     # Q_Motor2 (Rear-Left,   CCW) ← motor_offset=4 → servo[5]
+SERVO7_FUNCTION  35     # Q_Motor3 (Front-Left,  CW)  ← motor_offset=4 → servo[6]
+SERVO8_FUNCTION  36     # Q_Motor4 (Rear-Right,  CW)  ← motor_offset=4 → servo[7]
+SERVO9_FUNCTION  70     # Pusher throttle
+
+# ---- Motor limits (from official quadplane.parm) ----------------------------
+Q_M_PWM_MIN     1000
+Q_M_PWM_MAX     2000
+Q_M_THST_EXPO   0.65    # motor thrust curve nonlinearity (official quadplane.parm)
+# Hover at 50% throttle → center stick in QHOVER = altitude hold with zero drift.
+# In SIM_QuadPlane physics: thrust = f(motor_output, hover_thr).
+# Setting 0.5 aligns stick-center with the actual hover equilibrium.
+Q_M_THST_HOVER  0.50
+Q_M_HOVER_LEARN 0       # [SITL] disable hover throttle learning
+Q_M_SPIN_MIN    0.15
+Q_M_SPIN_MAX    0.95
+Q_M_SPOOL_TIME  0.25
+Q_M_HOVER_LEARN 0       # [SITL] disable hover throttle learning
+
+# ---- QuadPlane attitude PIDs (verbatim from official quadplane.parm) --------
+# These gains were developed by the ArduPilot team for their own SITL model.
+# They match sitl_default because we use the same physics (mass=3 kg, same inertia).
+Q_A_ANG_RLL_P   6.0     # official quadplane.parm — matches AP native physics
+Q_A_ANG_PIT_P   6.0
+Q_A_ANG_YAW_P   6.0
+
+Q_A_RAT_RLL_P   0.108
+Q_A_RAT_RLL_I   0.108
+Q_A_RAT_RLL_D   0.001
+Q_A_RAT_RLL_IMAX 0.5
+Q_A_RAT_RLL_FLTD 20
+Q_A_RAT_RLL_FLTT 20
+
+Q_A_RAT_PIT_P   0.103
+Q_A_RAT_PIT_I   0.103
+Q_A_RAT_PIT_D   0.001
+Q_A_RAT_PIT_IMAX 0.5
+Q_A_RAT_PIT_FLTD 20
+Q_A_RAT_PIT_FLTT 20
+
+Q_A_RAT_YAW_P   0.200
+Q_A_RAT_YAW_I   0.020
+Q_A_RAT_YAW_D   0.000
+Q_A_RAT_YAW_IMAX 0.5
+Q_A_RAT_YAW_FLTD 20
+Q_A_RAT_YAW_FLTT 20
+
+# ---- QuadPlane angle and rate limits ----------------------------------------
+Q_ANGLE_MAX     3000    # 30° max tilt (centidegrees)
+Q_A_ACCEL_R_MAX 40000   # centideg/s² (~7 rad/s²)
+Q_A_ACCEL_P_MAX 40000
+Q_A_ACCEL_Y_MAX 10000
+Q_A_RATE_R_MAX  75      # deg/s
+Q_A_RATE_P_MAX  75
+Q_A_RATE_Y_MAX  75
+
+# ---- QuadPlane position controller ------------------------------------------
+Q_P_POSXY_P     0.5
+Q_P_POSZ_P      1.0
+Q_P_VELXY_P     0.7
+Q_P_VELXY_I     0.35
+Q_P_VELXY_D     0.17
+Q_P_VELXY_IMAX  1000
+Q_P_VELZ_P      5.0
+Q_P_VELZ_IMAX   1000
+Q_P_ACCZ_P      0.3
+Q_P_ACCZ_I      1.0
+Q_P_ACCZ_IMAX   800
+
+# ---- QuadPlane pilot speed limits -------------------------------------------
+Q_PILOT_SPD_UP  2.5
+Q_PILOT_SPD_DN  1.5
+Q_PILOT_ACCEL_Z 2.5
+Q_LOIT_SPEED    500     # cm/s
+Q_WP_SPEED      500     # cm/s
+Q_GUIDED_MODE   1
+
+# ---- QuadPlane transition ---------------------------------------------------
+Q_TRANSITION_MS 8000    # 8 s VTOL→fixed-wing transition
+Q_ASSIST_SPEED  18      # quad assists below 18 m/s (from official quadplane.parm)
+Q_BACKTRANS_MS  3000
+
+# ---- Fixed-wing throttle / speed limits (official quadplane.parm) -----------
+THR_MIN         0
+THR_MAX         100
+TRIM_THROTTLE   45
+SCALING_SPEED   15
+ROLL_LIMIT_DEG  65      # from official quadplane.parm
+PTCH_LIM_MAX_DEG 30     # from official quadplane.parm
+PTCH_LIM_MIN_DEG -30    # from official quadplane.parm
+
+# ---- Fixed-wing rate controllers (from official quadplane.parm) -------------
+RLL_RATE_P      0.141009
+RLL_RATE_I      0.212500
+RLL_RATE_D      0.000000
+RLL_RATE_FF     0.552741
+RLL_RATE_IMAX   0.888889
+
+PTCH_RATE_P     0.309954
+PTCH_RATE_I     0.212500
+PTCH_RATE_D     0.000000
+PTCH_RATE_FF    1.407055
+PTCH_RATE_IMAX  0.888889
+PTCH2SRV_RLL    1
+
+# ---- TECS (fixed-wing energy controller) ------------------------------------
+TECS_TIME_CONST 5
+TECS_THR_DAMP   0.5
+TECS_INTEG_GAIN 0.3
+TECS_PTCH_DAMP  0.3
+TECS_VERT_ACC   7
+TECS_CLMB_MAX   5
+TECS_SINK_MIN   2
+TECS_SINK_MAX   5
+
+# ---- Navigation -------------------------------------------------------------
+NAVL1_PERIOD    14      # from official quadplane.parm
+NAVL1_DAMPING   0.75
+
+# ---- RTL / safety -----------------------------------------------------------
+RTL_ALTITUDE    20      # from official quadplane.parm
+STALL_PREVENTION 1
+KFF_RDDRMIX     0.500   # from official quadplane.parm
+
+# ---- 2026-06-10 (see BUGFIXES 2026-06-10) ------------------------------------
+# Home altitude exactly 0 re-triggers ArduPlane's baro field-elevation auto-set
+# every second; each firing resets the AHRS height datum and kicks the EKF
+# vertical channel ("Field Elevation Set: 0m" spam). Nonzero -> fires once.
+# NOTE: do NOT add SIM_SPEEDUP here — ap_native runs AP's own physics and a
+# speedup of N really runs the sim N x fast. SIM_SPEEDUP belongs to ue_physics
+# vehicles only (where UE paces the sim and AP must not sleep).
+BARO_FIELD_ELV  10

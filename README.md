@@ -1,17 +1,18 @@
 # CezeriSim
 
 CezeriSim is a packaged Unreal Engine 5 VTOL drone simulator. The 3D world and
-(optionally) the flight physics run in the `CezeriSim.exe` Windows build, while
-the flight controller — ArduPlane SITL — runs inside a Docker container and
-talks to the sim over UDP/MAVLink.
+(optionally) the flight physics run in the packaged game build for your
+platform (`Windows/`, `Mac/`, or `Linux/`), while the flight controller —
+ArduPlane SITL — runs inside a Docker container and talks to the sim over
+UDP/MAVLink.
 
 ## Quick start: clone only your OS (sparse checkout)
 
-Each platform ships as its own ~600 MB build (`Windows/`, `Mac/`, and `Linux/`
-where present), and a plain `git clone` pulls **all** of them. Instead, sparse
-checkout grabs only your platform's folder (plus top-level files like this
-README). With **Git + Git LFS installed** (run `git lfs install` once per
-machine), pick your OS and run:
+Each platform ships as its own ~1 GB build (`Windows/`, `Mac/`, and `Linux/`),
+and a plain `git clone` pulls **all** of them. Instead, sparse checkout grabs
+only your platform's folder (plus top-level files like this README). With
+**Git + Git LFS installed** (run `git lfs install` once per machine), pick
+your OS and run:
 
 ```bash
 # Choose ONE platform and use the SAME name in both marked lines:
@@ -43,6 +44,14 @@ Windows/
     │       └── servo_relay.py     # Relays AP servo output to UE (ue_physics mode)
     └── Vehicles/                  # Vehicle configs (params, mechanical/electrical)
         └── active_vehicle.txt     # Selects which vehicle config is used
+
+Linux/                             # Same layout, Linux binaries
+├── CezeriSim.sh                   # Launcher (game binary: CezeriSim/Binaries/Linux/CezeriSim)
+└── CezeriSim/{Binaries, Content, Scripts, Vehicles}
+
+Mac/
+└── CezeriSim.app                  # Scripts/ + Vehicles/ live inside the app bundle
+                                   # (Contents/UE/CezeriSim/)
 ```
 
 ## Getting the repository
@@ -103,22 +112,66 @@ installed) still works and gets everything.
 
 ### 3. Verify
 
-The game binary must be real content, not an LFS pointer (should be
-~300 MB, not a few hundred bytes):
+The game binary must be real content, not an LFS pointer (should be tens to
+hundreds of MB, not a few hundred bytes):
 
 ```powershell
 Get-Item Windows\CezeriSim\Binaries\Win64\CezeriSim.exe   # Windows
-ls -lh Linux/CezeriSim/Binaries/Linux/CezeriSim           # Linux/Mac: du -sh Mac/
 ```
 
-If it is tiny, run `git lfs pull` inside the repo.
+```bash
+ls -lh Mac/CezeriSim.app/Contents/MacOS/CezeriSim          # macOS
+ls -lh Linux/CezeriSim/Binaries/Linux/CezeriSim             # Linux
+```
+
+If it is tiny, run `git lfs pull` inside the repo. `du -sh Mac/` is **not**
+a substitute — it sums the whole tree, so a real multi-hundred-MB `Content/`
+pak next to a tiny LFS-pointer binary still looks "big enough" while the app
+itself won't launch.
+
+### 4. macOS only: fix the code signature
+
+The `.app` is packaged on Windows, which breaks its code signature (Apple
+Silicon refuses to run an app with an invalid signature). After every clone
+or pull that changes `Mac/`, re-sign it locally:
+
+```bash
+chmod +x Mac/CezeriSim.app/Contents/MacOS/CezeriSim
+codesign --force --deep --sign - Mac/CezeriSim.app
+```
+
+This is a local, ad-hoc signature (not notarized), so macOS Gatekeeper will
+still flag the app on first launch — right-click it and choose **Open** once
+to allow it. See **Known issues on macOS** below for why this step exists
+and isn't baked into the repo yet.
+
+### 5. Linux only: first launch
+
+The build needs a **Vulkan-capable GPU and driver** (the renderer targets
+Vulkan SM6 — recent Mesa/RADV, NVIDIA or Intel ANV drivers all qualify;
+`vulkaninfo --summary` verifies). The launcher and game binary are committed
+with the executable bit set, but if your checkout somehow lost it:
+
+```bash
+chmod +x Linux/CezeriSim.sh Linux/CezeriSim/Binaries/Linux/CezeriSim
+./Linux/CezeriSim.sh
+```
+
+The in-game **Start/Stop Docker** buttons open the SITL launcher in your
+terminal emulator (x-terminal-emulator, gnome-terminal, konsole,
+xfce4-terminal, or xterm — whichever is found first; with none installed the
+containers still start, just without a visible console). They invoke
+`python3` and `docker compose`, so the prerequisites below apply the same
+as when running `start_sitl_docker.py` by hand.
 
 ## Prerequisites
 
 ### 1. Python 3.10+
 
-`start_sitl_docker.py` (and the servo relay it launches) run on Windows with
-plain Python — no extra pip packages required.
+`start_sitl_docker.py` (and the servo relay it launches) run on plain
+Python on every platform — no extra pip packages required.
+
+**Windows:**
 
 1. Install Python 3.10 or newer from <https://www.python.org/downloads/>
    (check **"Add python.exe to PATH"** in the installer), or:
@@ -133,12 +186,19 @@ plain Python — no extra pip packages required.
    python --version
    ```
 
+**macOS:** `brew install python3` (or install from python.org), then verify
+with `python3 --version`.
+
+**Linux:** install via your distro's package manager (e.g.
+`sudo apt install python3`), then verify with `python3 --version`.
+
 ### 2. Docker Desktop
 
 The ArduPilot SITL flight controller runs in a Linux container, so you need
 Docker. On Linux install Docker Engine + the compose plugin
 (<https://docs.docker.com/engine/install/>); on macOS use Docker Desktop for
-Mac. On Windows, install Docker Desktop for Windows:
+Mac, or Colima (see the **macOS + Colima** note below). On Windows, install
+Docker Desktop for Windows:
 
 1. Download Docker Desktop from <https://www.docker.com/products/docker-desktop/>.
 2. Run the installer and keep the default **WSL 2 backend** option enabled
@@ -153,13 +213,36 @@ Mac. On Windows, install Docker Desktop for Windows:
    docker compose version
    ```
 
+> **macOS + Colima:** if you use [Colima](https://github.com/abiosoft/colima)
+> instead of Docker Desktop, start it with the gVisor-based port forwarder —
+> Colima's default forwarder tunnels over SSH, which only carries TCP and
+> silently drops the UDP JSON-physics traffic (port 9003) between UE and
+> ArduPilot. Without this flag the simulator connects fine over MAVLink (TCP)
+> but the aircraft never moves, with ArduPilot endlessly logging
+> `No JSON sensor message received, resending servos`:
+>
+> ```bash
+> colima start --port-forwarder grpc
+> ```
+>
+> This is a one-time setting, persisted in `~/.colima/default/colima.yaml` as
+> `portForwarder: grpc`. Docker Desktop for Mac does not need this — its
+> vpnkit forwarder already carries UDP.
+
 
 ## First-time setup
 
-Build the SITL Docker image once (clones and compiles ArduPlane, takes a while):
+Build the SITL Docker image once (clones and compiles ArduPlane, takes a while).
+Use your platform's `Scripts` folder — same command everywhere:
 
 ```powershell
-cd Windows\CezeriSim\Scripts
+cd Windows\CezeriSim\Scripts     # Windows
+docker compose build
+```
+
+```bash
+cd Mac/CezeriSim.app/Contents/UE/CezeriSim/Scripts    # macOS
+cd Linux/CezeriSim/Scripts                             # Linux
 docker compose build
 ```
 
@@ -170,18 +253,31 @@ docker compose build
 1. Start the SITL container:
 
    ```powershell
-   python Windows\CezeriSim\Scripts\start_sitl_docker.py
+   python Windows\CezeriSim\Scripts\start_sitl_docker.py    # Windows
+   ```
+
+   ```bash
+   python3 Mac/CezeriSim.app/Contents/UE/CezeriSim/Scripts/start_sitl_docker.py   # macOS
+   python3 Linux/CezeriSim/Scripts/start_sitl_docker.py                            # Linux
    ```
 
    Useful flags: `--vehicle <name>` (override active vehicle), `--build`
-   (rebuild image first), `--stop`, `--logs`, `--list`.
+   (rebuild image first), `--stop`, `--logs`, `--list`, and fleet mode
+   `--drones N` / `--vtols M` (see **Fleet mode** below).
 
    For vehicles with the `ue_physics` backend this also starts
    `Scripts/control/servo_relay.py` in the background, which forwards
    ArduPilot's servo output (UDP 9006) to the simulator (UDP 127.0.0.1:9002).
    Leave it running — without it the aircraft will not respond.
 
-2. Launch the simulator: run `Windows\CezeriSim.exe`.
+2. Launch the simulator:
+
+   - **Windows:** run `Windows\CezeriSim.exe`.
+   - **macOS:** `open Mac/CezeriSim.app` (first launch: right-click →
+     **Open** to bypass Gatekeeper if the app isn't signed with a
+     Developer ID — see **Known issues on macOS** below).
+   - **Linux:** run `Linux/CezeriSim.sh` (needs Vulkan drivers — see
+     **Linux only: first launch** above).
 
 3. Connect a ground station or script over MAVLink:
 
@@ -196,6 +292,21 @@ docker compose build
    ```powershell
    python Windows\CezeriSim\Scripts\start_sitl_docker.py --stop
    ```
+
+### Fleet mode (multiple vehicles)
+
+`start_sitl_docker.py --drones N --vtols M` starts a matching number of SITL
+instances. **The UE in-game menu's drone/VTOL count is independent of this —
+it is not read from Docker, and Docker does not read it either.** Set them to
+the *same* number yourself:
+
+- Menu count > SITL count: extra aircraft in UE sit forever at
+  `Waiting for ArduPilot` with nothing to connect to.
+- Menu count < SITL count (or SITL started with no `--drones`/`--vtols` at
+  all, i.e. legacy single-vehicle mode): the legacy container's fixed JSON
+  port can coincidentally land on drone 1's port, so **drone 1 flies while
+  the rest report `connection refused`** — a partially-working setup that is
+  easy to misread as a general bug rather than a count mismatch.
 
 ## Vehicles
 
@@ -233,6 +344,36 @@ vehicles): the servo relay is not running. Make sure you started SITL via
 made without Git LFS (or via "Download ZIP"). Install Git LFS and run
 `git lfs pull` inside the repo.
 
+## Known issues on macOS
+
+The simulator and SITL themselves are solid on Apple Silicon — these are
+packaging/build gaps specific to producing the `.app` from a Windows
+machine, not runtime bugs. Tracked here until a Mac build machine closes
+them properly:
+
+- **Broken code signature.** Zipping/committing the `.app` on Windows
+  invalidates its signature seal. Run the re-sign command in **Getting the
+  repository → step 4** above after every clone/pull. The permanent fix is
+  to package the Mac build as a signed `.zip`/`.dmg` (via `ditto -c -k
+  --keepParent`, which preserves the signature) instead of committing the
+  raw `.app` tree — that needs to happen on an actual Mac.
+- **Settings/Models menu shows the C++ fallback UI**, not the designed
+  widget (`WB_SettingsMenu` / `WB_ModelsMenu` not found in the cooked
+  content). Doesn't block functionality, just looks different from the
+  Windows build. Needs those widgets cooked into the Mac content package —
+  only possible from a Mac (or a Mac cook agent), not from Windows.
+- **Misleading `[JSONBridge] GPS home for ALL ArduPilot instances` log
+  line.** It prints a single value labeled "ALL instances" once per bridge
+  (so a fleet prints several different "ALL" values), and that value can be
+  ~600 m off the real per-vehicle home shown in the `[Fleet] Registered
+  Drone` line just above it — looks like a leftover from a legacy
+  single-vehicle code path. Harmless: `start_sitl_docker.py` computes each
+  vehicle's actual home correctly from its own params and ignores this
+  line. Don't hand-copy this logged `--home` value; use `--vehicle` or
+  `--home` on `start_sitl_docker.py` instead. This message is emitted by
+  the compiled Unreal Engine C++ (not by anything in this packaged repo),
+  so fixing the text requires the UE source project.
+
 ## Maintainers: adding or updating a platform build
 
 The game reads `Vehicles/` and is launched alongside `Scripts/` from inside
@@ -245,7 +386,9 @@ existing `Windows/` tree (do not delete it first — `Scripts/` and `Vehicles/`
 are not part of a UE export and would be lost). Check `git status`, then
 commit.
 
-**Adding a Linux or Mac build** (from a Windows machine):
+**Adding or updating a Linux or Mac build** (from a Windows machine — the
+Linux build is cross-compiled there; see the UE source project's
+`docs/HOW_TO_RUN.md` "Package a Linux Build" for the toolchain + command):
 
 1. Stage the packaged build to a top-level `Linux/` or `Mac/` folder,
    mirroring the `Windows/` layout.
@@ -265,8 +408,25 @@ commit.
 
    ```powershell
    git update-index --chmod=+x Linux/CezeriSim.sh Linux/CezeriSim/Binaries/Linux/CezeriSim
+   git update-index --chmod=+x Mac/CezeriSim.app/Contents/MacOS/CezeriSim
    ```
 
-5. Commit and push, then verify on a real Linux/Mac machine: fresh clone,
-   `ls -l` shows the binaries as executable, and the game finds its
-   `Vehicles/` configs.
+   This step was missed for the first Mac build — always check
+   `git ls-files -s <path-to-binary>` shows mode `100755`, not `100644`,
+   before committing.
+
+5. If staging from a `.zip` exported on Windows, make sure macOS
+   AppleDouble/resource-fork junk didn't get swept in with it:
+
+   ```powershell
+   git status --porcelain Mac/ | Select-String "__MACOSX"
+   ```
+
+   `__MACOSX/` is in `.gitignore`, but only `git add`-ing the intended
+   subfolders (not the whole zip extraction root) avoids it in the first
+   place.
+
+6. Commit and push, then verify on a real Linux/Mac machine: fresh clone,
+   `ls -l` shows the binaries as executable, `codesign --verify --deep
+   --strict Mac/CezeriSim.app` succeeds (re-sign and re-export if not — see
+   **Known issues on macOS**), and the game finds its `Vehicles/` configs.

@@ -1,0 +1,160 @@
+{
+  "layout": {
+    "vtol_layout": "quadplane",
+    "lift_motors": 4.0,
+    "wing_config": "conventional",
+    "tail_type": "t tail",
+    "length_m": 1.73,
+    "span_check_m": 2.5,
+    "height_m": 0.4
+  },
+  "mass": {
+    "takeoff_kg": 7.5,
+    "empty_kg": 5.5,
+    "battery_kg": 1.9,
+    "payload_kg": 0.0,
+    "cg_aft_of_root_le_m": 0.125,
+    "cg_lateral_m": 0.0,
+    "cg_below_chord_m": 0.003,
+    "cg_vs_motor_center_m": 0.0
+  },
+  "inertia": {
+    "ixx": null,
+    "iyy": null,
+    "izz": null,
+    "ixz": null
+  },
+  "motors": {
+    "rect_width_m": 1.15,
+    "rect_length_m": 1.09,
+    "plane_above_cg_m": null,
+    "spin_directions": "front-right CCW / rear-left CCW / front-left CW / rear-right CW"
+  },
+  "wing": {
+    "span_m": 2.5,
+    "root_chord_m": 0.42,
+    "tip_chord_m": 0.25,
+    "area_m2": 0.84,
+    "le_sweep_deg": 2.4,
+    "dihedral_deg": 0.0,
+    "incidence_deg": 2.4,
+    "twist_deg": 0.0,
+    "airfoil": "PSU 94-097"
+  },
+  "htail": {
+    "config": "T tail",
+    "area_m2": 0.18,
+    "span_m": 0.78,
+    "arm_c4_to_c4_m": 1.14,
+    "incidence_deg": 0.0,
+    "airfoil": "NACA 0009"
+  },
+  "vtail": {
+    "area_m2": 0.04,
+    "height_m": 0.3,
+    "arm_to_cg_m": 0.88
+  },
+  "fuselage": {
+    "length_m": 0.84,
+    "width_m": 0.25,
+    "height_m": 0.17
+  },
+  "controls": {
+    "aileron": {
+      "y_in_m": 0.47,
+      "y_out_m": 1.25,
+      "chord_frac": 0.25
+    },
+    "elevator": {
+      "span_m": 0.78,
+      "chord_frac": 0.33
+    },
+    "rudder": {
+      "height_m": 0.3,
+      "chord_frac": 0.3
+    },
+    "max_deflection_deg": null
+  },
+  "envelope": {
+    "stall_speed_ms": 10.5,
+    "stall_test_mass_kg": 7.5,
+    "stall_aoa_deg": null,
+    "clmax": 1.3,
+    "cruise_ms": 17.0,
+    "max_ms": 27.0,
+    "transition_ms": 17.0
+  },
+  "environment": {
+    "site": "Hezarfen",
+    "lat": 41.101379,
+    "lon": 28.551848,
+    "field_elevation_m": 13.0
+  },
+  "ground": {
+    "cg_height_mm": null,
+    "half_dimension_m": null
+  },
+  "name": "pasifik",
+  "source": "PASIFIK_VTOL_MECHANICAL_DATA (1).txt + PASIFIK_VTOL_ELECTRICAL_DATA.txt",
+  "electrical": {
+    "autopilot": {
+      "hardware": "orange cube",
+      "firmware": "ArduPlane V4.6.3",
+      "q_frame": "Q_FRAME_CLASS:1 / Q_FRAME_TYPE:1",
+      "airspeed_sensor": "no",
+      "gps": "here 3 gps"
+    },
+    "lift_motor": {
+      "model": "T-Motor P60",
+      "kv": 340.0,
+      "max_current_a": 57.8,
+      "prop": "T-motor 22*6.6CF",
+      "prop_diameter_in": 22.0,
+      "prop_pitch_in": 6.6,
+      "prop_blades": 2.0,
+      "esc": "T-Motor ESC FLAME + 60A",
+      "pwm_min": 1000,
+      "pwm_max": 2000
+    },
+    "pusher_motor": {
+      "model": "AT5220-A Long Shaft",
+      "kv": 380.0,
+      "prop": "16x8 APC ELEKTRIK PERVANESI GEMFAN V2",
+      "prop_diameter_in": 16.0,
+      "prop_pitch_in": 8.0,
+      "prop_blades": 2.0,
+      "esc": "Flycolor 150A ESC FlyDragon 5-12S HV + 150A"
+    },
+    "battery": {
+      "chemistry": "LiPo",
+      "config": "6S1P",
+      "capacity_mah": 16000.0,
+      "voltage_full_v": 25.2,
+      "internal_resistance_mohm": null,
+      "hover_current_a": null,
+      "cruise_current_a": null,
+      "cells_s": 6
+    },
+    "servos": {
+      "models": "aileron-MG996R Yüksek Torklu Servo Motor - 180 Derece/ rudder-SAVOX - SW-0231MG/ elevator-MG996R Yüksek Torklu Servo Motor - 180 Derece",
+      "rated_speed": "MG996R-0.15 s/60° /SAVOX - SW-0231MG  0.17 s/60°",
+      "speed_deg_s": 353
+    }
+  },
+  "_warnings": [
+    "'CG aft of wing root leading edge': value 0.125 in an mm field looks like metres — using 0.125 m"
+  ],
+  "_gaps": [
+    "moments of inertia not provided (CAD report or pendulum test) — will be ESTIMATED",
+    "lift-motor plane height above CG not provided",
+    "control surface max deflections not measured — keeping default 20 deg",
+    "drag polar / glide data not provided — cd0 stays an estimate to be calibrated against the real cruise point (gokce method)",
+    "ground stance section empty — collision radius defaults to span/2",
+    "full .param export not attached — params.parm stays a placeholder (SITL boots with template params, not the real controller's)",
+    "dataflash .BIN logs not attached — no real-vs-sim validation flight yet",
+    "lift-motor thrust-stand sweep empty — k_thrust/k_torque derived from datasheet + hover-throttle assumption (PLACEHOLDER, needs stand data or .param)",
+    "pusher thrust-vs-airspeed data empty — static coefficient only, prop unloading stays inside effective cd0 (gokce-style)",
+    "motor spin-up lag not measured — motor_time_constant_s keeps default 0.05 s",
+    "hover/cruise current draw N/A — battery endurance model unanchored"
+  ]
+}

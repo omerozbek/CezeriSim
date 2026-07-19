@@ -1,0 +1,120 @@
+================================================================================
+ GOKCE — MISSING ELECTRICAL / PROPULSION DATA REQUEST
+ Fill in the blanks below and hand this file back. Every item maps to a value in
+ Vehicles/gokce/electrical.json that is currently derived or estimated (flagged
+ in the file itself). Items are ordered by how much they improve sim-vs-real
+ accuracy. Units are stated per line — please keep them.
+================================================================================
+
+--------------------------------------------------------------------------------
+ 1. LIFT MOTOR TEST-STAND SWEEP (T-Motor P60 + Falcon CF 22x6.6)  PRIORITY: HIGH
+--------------------------------------------------------------------------------
+ Why: k_thrust 78.49 N is derived indirectly through ArduPilot's expo curve from
+ the learned Q_M_THST_HOVER — good, but a measured curve replaces the assumption
+ that thrust follows throttle². k_torque 2.0 is a PURE ESTIMATE from generic
+ prop coefficients (flagged "replace with test-stand torque data") — it sets yaw
+ authority in hover, one of the least-validated axes right now.
+
+ How to measure: thrust stand (e.g. RCbenchmark) sweep at flight battery
+ voltage. If you have the manufacturer's full P60 + 22x6.6 test table, that
+ works too — paste it or attach it.
+
+ FILL IN — one row per throttle step (add rows as needed):
+   Battery voltage at test start (V) = ______
+   PWM (µs) | Throttle % | Thrust (g) | Torque (N·m) | RPM  | Current (A) | Volts (V)
+   1100     | 10         | ______     | ______       | ____ | ______      | ______
+   1200     | 20         | ______     | ______       | ____ | ______      | ______
+   1300     | 30         | ______     | ______       | ____ | ______      | ______
+   1400     | 40         | ______     | ______       | ____ | ______      | ______
+   1500     | 50         | ______     | ______       | ____ | ______      | ______
+   1600     | 60         | ______     | ______       | ____ | ______      | ______
+   1700     | 70         | ______     | ______       | ____ | ______      | ______
+   1800     | 80         | ______     | ______       | ____ | ______      | ______
+   1900     | 90         | ______     | ______       | ____ | ______      | ______
+   2000     | 100        | ______     | ______       | ____ | ______      | ______
+
+   (Torque column is the most valuable one — if the stand cannot measure
+    torque, RPM + current per step still lets me estimate it far better
+    than the current guess.)
+
+--------------------------------------------------------------------------------
+ 2. PUSHER PROP MODEL + THRUST vs AIRSPEED (T-Motor AT5220-A)     PRIORITY: HIGH
+--------------------------------------------------------------------------------
+ Why: k_thrust_pusher 73.7 N is the STATIC datasheet value. Real props lose
+ 30–40% thrust at 24 m/s cruise; the sim currently hides that loss inside an
+ inflated wing cd0 (0.070 vs geometric 0.02–0.05). A prop map lets us model
+ thrust decay properly and restore a physical drag polar — this is the single
+ biggest remaining "effective value" in the whole config (ROADMAP 4.3).
+
+ FILL IN — first, the prop itself (needed no matter what):
+   Pusher propeller make/model      = ______
+   Diameter × pitch (inch)          = ______ × ______
+   Blade count                      = ______
+   AT5220 KV rating (e.g. 25KV/20KV) = ______
+   ESC make/model                   = ______
+
+ THEN any ONE of these (best first):
+   a) Wind-tunnel / car-mount data: thrust vs airspeed at 2–3 throttle levels:
+      V (m/s): 0 ____ / 10 ____ / 15 ____ / 20 ____ / 24 ____ / 28 ____
+      at throttle ____% — thrust (N): ____ / ____ / ____ / ____ / ____ / ____
+   b) Manufacturer/APC-style prop performance table (CT/CP vs advance ratio) —
+      paste or attach.
+   c) Nothing measured: give me just the prop model above and I use published
+      prop data for that size — still much better than the current hack.
+
+ STATIC SWEEP (same format as section 1, if you have a stand that fits it):
+   PWM (µs) | Throttle % | Thrust (g) | RPM  | Current (A) | Volts (V)
+   1200     | 20         | ______     | ____ | ______      | ______
+   1400     | 40         | ______     | ____ | ______      | ______
+   1600     | 60         | ______     | ____ | ______      | ______
+   1800     | 80         | ______     | ____ | ______      | ______
+   2000     | 100        | ______     | ____ | ______      | ______
+
+--------------------------------------------------------------------------------
+ 3. MOTOR RESPONSE TIME (SPIN-UP LAG)                           PRIORITY: MEDIUM
+--------------------------------------------------------------------------------
+ Why: motor_time_constant_s 0.05 is a generic value. It shapes how the plant
+ responds to every rate-controller correction — affects hover PID texture and
+ the attitude-oscillation signature you compare in logs.
+
+ How to measure: on the thrust stand, command a throttle step (e.g. 30%→60%)
+ and record thrust or RPM vs time; the time constant is time to reach 63% of
+ the change. A stand log file at ≥100 Hz is ideal — attach it if you have one.
+
+ FILL IN:
+   Lift motor (P60):   step ____% → ____%,  time to 63% = ______ ms
+   Pusher (AT5220):    step ____% → ____%,  time to 63% = ______ ms
+   (or attach the stand's time-series log)
+
+--------------------------------------------------------------------------------
+ 4. BATTERY PACK & POWER SYSTEM                                    PRIORITY: LOW
+--------------------------------------------------------------------------------
+ Why: the UE plant does not consume battery data YET — thrust is voltage-
+ independent in the sim. On the real vehicle, pack sag over a 5-minute mission
+ reduces available thrust several percent (visible as hover throttle creep in
+ logs). This data enables a future voltage-sag model and realistic battery
+ telemetry (SIM_BATT_* in ArduPilot), and the voltage column in sections 1–2
+ is only interpretable with pack specs.
+
+ FILL IN:
+   Chemistry (LiPo / Li-ion)          = ______
+   Cell count / config (e.g. 12S1P)   = ______
+   Capacity (mAh)                     = ______
+   Separate packs for lift vs pusher? = ______ (if yes: specs of each)
+   Pack internal resistance if known (mΩ) = ______
+   Typical voltage: full ____ V / after mission ____ V
+   Hover current draw, total (A)      = ______
+   Cruise current draw, total (A)     = ______
+
+--------------------------------------------------------------------------------
+ 5. SERVO SPECS (CONTROL SURFACES)                                 PRIORITY: LOW
+--------------------------------------------------------------------------------
+ Why: the sim currently applies control-surface deflection instantly. Real
+ servo slew rate (e.g. 0.15 s / 60°) adds lag in the fixed-wing loops. Low
+ priority — only worth modeling after the aero derivatives are real.
+
+ FILL IN:
+   Servo make/model (aileron/elevator/rudder) = ______
+   Rated speed (s per 60°) at flight voltage  = ______
+   Linkage: servo horn → surface ratio if not 1:1 = ______
+================================================================================

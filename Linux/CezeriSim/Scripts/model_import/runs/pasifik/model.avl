@@ -1,0 +1,93 @@
+pasifik
+#Mach
+0.0
+#IYsym IZsym Zsym
+0 0 0.0
+#Sref   Cref    Bref
+0.8375 0.3422 2.5000
+#Xref   Yref    Zref
+0.1250 0.0 -0.0030
+#CDp
+0.0
+
+SURFACE
+Wing
+#Nchord Cspace Nspan Sspace
+10 1.0 24 1.0
+COMPONENT
+1
+YDUPLICATE
+0.0
+ANGLE
+2.400
+
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.0000 0.0000 0.0000 0.4200 0.000
+AFILE
+airfoils/psu94097.dat
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.0197 0.4700 0.0000 0.3561 0.000
+AFILE
+airfoils/psu94097.dat
+CONTROL
+aileron 1.0 0.750 0. 0. 0. -1.0
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.0524 1.2500 0.0000 0.2500 0.000
+AFILE
+airfoils/psu94097.dat
+CONTROL
+aileron 1.0 0.750 0. 0. 0. -1.0
+
+SURFACE
+Horizontal tail
+#Nchord Cspace Nspan Sspace
+8 1.0 12 1.0
+COMPONENT
+1
+YDUPLICATE
+0.0
+ANGLE
+0.000
+
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+1.1918 0.0000 0.3000 0.2308 0.000
+NACA
+0009
+CONTROL
+elevator 1.0 0.670 0. 0. 0. 1.0
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+1.1918 0.3900 0.3000 0.2308 0.000
+NACA
+0009
+CONTROL
+elevator 1.0 0.670 0. 0. 0. 1.0
+
+SURFACE
+Fin
+#Nchord Cspace Nspan Sspace
+8 1.0 10 1.0
+COMPONENT
+1
+ANGLE
+0.0
+
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.9717 0.0000 0.0000 0.1333 0.000
+NACA
+0009
+CONTROL
+rudder 1.0 0.700 0. 0. 0. 1.0
+SECTION
+#Xle    Yle     Zle     Chord   Ainc
+0.9717 0.0000 0.3000 0.1333 0.000
+NACA
+0009
+CONTROL
+rudder 1.0 0.700 0. 0. 0. 1.0
+
